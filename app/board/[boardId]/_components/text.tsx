@@ -3,7 +3,7 @@ import ContentEditable, { ContentEditableEvent } from 'react-contenteditable'
 
 import { TextLayer } from '@/types/canvas'
 import { cn, colorToCss } from '@/lib/utils'
-import { useMutation } from '@/liveblocks.config'
+import { useCanvasStore } from '@/stores/canvas-store'
 
 const font = Kalam({ subsets: ['latin'], weight: ['400'] })
 
@@ -30,15 +30,11 @@ export const Text = ({
   selectionColor,
 }: TextProps) => {
   const { x, y, width, height, fill, value } = layer
+  const updateLayer = useCanvasStore(state => state.updateLayer)
 
-  const updateValue = useMutation(({ storage }, newValue: string) => {
-    const liveLayers = storage.get('layers')
-
-    liveLayers.get(id)?.set('value', newValue)
-  }, [])
-
-  const handleContentChange = (e: ContentEditableEvent) =>
-    updateValue(e.target.value)
+  const handleContentChange = (e: ContentEditableEvent) => {
+    updateLayer(id, { value: e.target.value })
+  }
 
   return (
     <foreignObject

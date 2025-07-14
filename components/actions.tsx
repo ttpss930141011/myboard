@@ -13,9 +13,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 
-import { api } from '@/convex/_generated/api'
-import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useRenameModal } from '@/store/use-rename-modal'
+import { useDeleteBoard } from '@/hooks/api/use-boards'
 
 interface ActionsProps {
   children: React.ReactNode
@@ -33,7 +32,7 @@ export const Actions = ({
   title,
 }: ActionsProps) => {
   const { onOpen } = useRenameModal()
-  const { mutate, pending } = useApiMutation(api.board.remove)
+  const deleteBoard = useDeleteBoard(id)
 
   const onCopyLink = () => {
     navigator.clipboard
@@ -43,9 +42,7 @@ export const Actions = ({
   }
 
   const onDelete = () => {
-    mutate({ id })
-      .then(() => toast.success('Board deleted'))
-      .catch(() => toast.error('Failed to delete board'))
+    deleteBoard.mutate()
   }
 
   return (
@@ -71,7 +68,7 @@ export const Actions = ({
         <ConfirmModal
           header="Delete board?"
           description="This will delete the board and all of its contents."
-          disabled={pending}
+          disabled={deleteBoard.isPending}
           onConfirm={onDelete}
         >
           <Button
