@@ -66,6 +66,8 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     sendToBack,
     findIntersectingLayersWithRectangle,
     saveHistory,
+    getLayer,
+    startEditingWithChar,
   } = useCanvasStore()
   
   const { undo, redo, canUndo, canRedo } = useCanvasHistory()
@@ -364,6 +366,12 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      // Skip if target is an input element
+      const target = e.target as HTMLElement
+      if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') {
+        return
+      }
+      
       switch (e.key) {
         case 'z': {
           if (e.ctrlKey || e.metaKey) {
@@ -372,7 +380,29 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             } else {
               undo()
             }
-            break
+            return
+          }
+          break
+        }
+        case 'Delete':
+        case 'Backspace': {
+          if (selectedLayers.length > 0) {
+            deleteLayers()
+            return
+          }
+          break
+        }
+      }
+      
+      // Handle keyboard input for selected Note/Text layers
+      if (selectedLayers.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const layer = getLayer(selectedLayers[0])
+        
+        if (layer && (layer.type === LayerType.Note || layer.type === LayerType.Text)) {
+          // Check if it's a printable character (excluding special keys)
+          if (e.key.length === 1 && !e.key.match(/[\x00-\x1F\x7F-\x9F]/)) {
+            e.preventDefault()
+            startEditingWithChar(selectedLayers[0], e.key)
           }
         }
       }
@@ -383,7 +413,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     return () => {
       document.removeEventListener('keydown', onKeyDown)
     }
-  }, [undo, redo])
+  }, [undo, redo, selectedLayers, deleteLayers, getLayer, startEditingWithChar])
 
   if (isLoading) {
     return <Loading />
