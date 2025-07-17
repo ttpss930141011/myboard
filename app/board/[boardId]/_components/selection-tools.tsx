@@ -5,7 +5,7 @@ import { BringToFront, SendToBack, Trash2 } from 'lucide-react'
 
 import { Hint } from '@/components/hint'
 import { Button } from '@/components/ui/button'
-import { ColorPicker } from './color-picker'
+import { ColorPickerPopover } from './color-picker-popover'
 
 import { Camera, Color } from '@/types/canvas'
 import { useCanvasStore } from '@/stores/canvas-store'
@@ -51,7 +51,7 @@ export const SelectionTools = memo(
 
     return (
       <div
-        className="absolute p-3 rounded-xl bg-white shadow-sm border flex select-none"
+        className="absolute p-2 rounded-xl bg-white shadow-lg border flex items-center gap-1 select-none"
         style={{
           transform: `translate(
             calc(${x}px - 50%),
@@ -59,33 +59,38 @@ export const SelectionTools = memo(
           )`,
         }}
       >
-        <ColorPicker onChange={setFill} />
-        <div className="flex flex-col gap-y-0.5">
+        <ColorPickerPopover onChange={setFill} />
+        <div className="flex items-center gap-1 px-1 border-l border-neutral-200">
           <Hint label="Bring to front">
             <Button
               onClick={moveToFront}
               size="icon"
-              variant="board"
-              className="text-white"
+              variant="ghost"
+              className="hover:bg-blue-100 hover:text-blue-600"
             >
-              <BringToFront />
+              <BringToFront className="h-4 w-4" />
             </Button>
           </Hint>
-          <Hint label="Send to back" side="bottom">
+          <Hint label="Send to back">
             <Button
               onClick={moveToBack}
               size="icon"
-              variant="board"
-              className="text-white"
+              variant="ghost"
+              className="hover:bg-blue-100 hover:text-blue-600"
             >
-              <SendToBack />
+              <SendToBack className="h-4 w-4" />
             </Button>
           </Hint>
         </div>
-        <div className="flex items-center pl-2 ml-2 border-l border-neutral-200">
+        <div className="flex items-center pl-1 border-l border-neutral-200">
           <Hint label="Delete">
-            <Button size="icon" variant="board" onClick={handleDelete}>
-              <Trash2 />
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleDelete}
+              className="hover:bg-red-100 hover:text-red-600"
+            >
+              <Trash2 className="h-4 w-4" />
             </Button>
           </Hint>
         </div>
