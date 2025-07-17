@@ -48,6 +48,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     canvasState,
     penColor,
     pencilDraft,
+    editingLayerId,
     insertLayer,
     updateLayer,
     deleteLayer,
@@ -301,7 +302,10 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         canvasState.mode === CanvasMode.None ||
         canvasState.mode === CanvasMode.Pressing
       ) {
-        unselectLayersHandler()
+        // Only unselect if not editing text
+        if (!editingLayerId) {
+          unselectLayersHandler()
+        }
         setCanvasState({
           mode: CanvasMode.None,
         })
@@ -322,6 +326,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       insertLayerWithPosition,
       unselectLayersHandler,
       insertPathHandler,
+      editingLayerId,
     ]
   )
 
