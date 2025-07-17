@@ -13,6 +13,7 @@ import Image from 'next/image'
 
 interface ColorPickerPopoverProps {
   onChange: (color: Color) => void
+  currentColor?: Color
 }
 
 const colors: Color[] = [
@@ -30,7 +31,7 @@ const colors: Color[] = [
   { r: 251, g: 146, b: 60 },   // Amber
 ]
 
-export const ColorPickerPopover = ({ onChange }: ColorPickerPopoverProps) => {
+export const ColorPickerPopover = ({ onChange, currentColor }: ColorPickerPopoverProps) => {
   return (
     <Popover>
       <Hint label="Color picker">
@@ -40,13 +41,20 @@ export const ColorPickerPopover = ({ onChange }: ColorPickerPopoverProps) => {
             variant="board"
             className="relative overflow-hidden"
           >
-            <Image
-              src="/color.png"
-              alt="Color picker"
-              width={24}
-              height={24}
-              className="object-contain"
-            />
+            {currentColor ? (
+              <div
+                className="w-6 h-6 rounded border-2 border-white shadow-sm"
+                style={{ backgroundColor: colorToCss(currentColor) }}
+              />
+            ) : (
+              <Image
+                src="/color.png"
+                alt="Color picker"
+                width={24}
+                height={24}
+                className="object-contain"
+              />
+            )}
           </Button>
         </PopoverTrigger>
       </Hint>
