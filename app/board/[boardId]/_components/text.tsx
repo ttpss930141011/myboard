@@ -146,14 +146,31 @@ export const Text = ({
 
   const handleTextareaBlur = () => {
     setEditingLayer(null)
-    updateLayer(id, { value: editValue })
+    
+    // Auto-delete empty text layers (following Miro's pattern)
+    const trimmedValue = editValue.trim()
+    if (trimmedValue === '') {
+      // Use deleteLayer from store to handle deletion properly (with history)
+      const deleteLayer = useCanvasStore.getState().deleteLayer
+      deleteLayer(id)
+    } else {
+      updateLayer(id, { value: editValue })
+    }
   }
 
   const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Escape') {
       e.preventDefault()
       setEditingLayer(null)
-      setEditValue(value || '')
+      
+      // Also check for empty text when escaping
+      const originalValue = value || ''
+      if (originalValue.trim() === '') {
+        const deleteLayer = useCanvasStore.getState().deleteLayer
+        deleteLayer(id)
+      } else {
+        setEditValue(originalValue)
+      }
     }
     // Let Enter key work naturally for line breaks (same as Note)
   }
@@ -224,21 +241,6 @@ export const Text = ({
           </div>
         )}
         
-        {/* Placeholder text overlay */}
-        {(!value || value === '') && !isEditing && (
-          <div 
-            className={cn(
-              'absolute inset-0 flex items-center justify-center pointer-events-none opacity-50 p-2',
-              font.className
-            )}
-            style={{
-              fontSize: `${Math.min(fontSize, 24)}px`,
-              color: fill ? colorToCss(fill) : '#000',
-            }}
-          >
-            Double-click to edit
-          </div>
-        )}
         
       </div>
     </foreignObject>

@@ -148,14 +148,19 @@ export const penPointsToPathLayer = (
     if (bottom < y) bottom = y
   }
 
+  // Account for stroke width and padding to match the rendered path
+  const STROKE_SIZE = 16 // from getStroke size parameter
+  const PADDING = 10 // from Path component padding
+  const offset = STROKE_SIZE / 2 + PADDING
+
   return {
     type: LayerType.Path,
-    x: left,
-    y: top,
-    width: right - left,
-    height: bottom - top,
+    x: left - offset,
+    y: top - offset,
+    width: right - left + offset * 2,
+    height: bottom - top + offset * 2,
     fill: color,
-    points: points.map(([x, y, pressure]) => [x - left, y - top, pressure]),
+    points: points.map(([x, y, pressure]) => [x - left + offset, y - top + offset, pressure]),
   }
 }
 

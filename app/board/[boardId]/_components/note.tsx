@@ -224,21 +224,6 @@ export const Note = ({
           </div>
         )}
         
-        {/* Placeholder text overlay */}
-        {(!value || value === '') && !isEditing && (
-          <div 
-            className={cn(
-              'absolute inset-0 flex items-center justify-center pointer-events-none opacity-50 p-4',
-              font.className
-            )}
-            style={{
-              fontSize: `${Math.min(fontSize, 24)}px`,
-              color: fill ? getContrastingTextColor(fill) : '#000',
-            }}
-          >
-            Double-click to edit
-          </div>
-        )}
         
       </div>
     </foreignObject>
