@@ -21,6 +21,9 @@ import { penPointsToPathLayer } from '@/lib/utils'
 // Enable Immer MapSet plugin
 enableMapSet()
 
+// Constants
+const MAX_HISTORY_ENTRIES = 50
+
 // History state for undo/redo
 interface HistoryEntry {
   layers: [string, Layer][]
@@ -338,8 +341,8 @@ export const useCanvasStore = create<CanvasStore>()(
           layerIds: [...state.layerIds]
         }
         state.history.past.push(currentState)
-        // Limit history to 50 entries
-        if (state.history.past.length > 50) {
+        // Limit history entries
+        if (state.history.past.length > MAX_HISTORY_ENTRIES) {
           state.history.past.shift()
         }
         // Clear future when new action is taken

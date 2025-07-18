@@ -14,6 +14,12 @@ import {
 
 const COLORS = ['#DC2626', '#D97706', '#059669', '#7C3AED', '#DB2777']
 
+// Luminance calculation constants (ITU-R BT.709)
+const LUMINANCE_RED_WEIGHT = 0.299
+const LUMINANCE_GREEN_WEIGHT = 0.587
+const LUMINANCE_BLUE_WEIGHT = 0.114
+const LUMINANCE_THRESHOLD = 182
+
 export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs))
 
 export const connectionIdToColor = (connectionId: number): string =>
@@ -72,14 +78,14 @@ export const resizeBounds = (
 export const findIntersectingLayersWithRectangle = (
   layerIds: readonly string[],
   layers: ReadonlyMap<string, Layer>,
-  a: Point,
-  b: Point
+  startPoint: Point,
+  endPoint: Point
 ) => {
   const rect = {
-    x: Math.min(a.x, b.x),
-    y: Math.min(a.y, b.y),
-    width: Math.abs(a.x - b.x),
-    height: Math.abs(a.y - b.y),
+    x: Math.min(startPoint.x, endPoint.x),
+    y: Math.min(startPoint.y, endPoint.y),
+    width: Math.abs(startPoint.x - endPoint.x),
+    height: Math.abs(startPoint.y - endPoint.y),
   }
 
   const ids = []
@@ -107,9 +113,12 @@ export const findIntersectingLayersWithRectangle = (
 }
 
 export const getContrastingTextColor = (color: Color) => {
-  const luminance = 0.299 * color.r + 0.587 * color.g + 0.114 * color.b
+  const luminance = 
+    LUMINANCE_RED_WEIGHT * color.r + 
+    LUMINANCE_GREEN_WEIGHT * color.g + 
+    LUMINANCE_BLUE_WEIGHT * color.b
 
-  return luminance > 182 ? 'black' : 'white'
+  return luminance > LUMINANCE_THRESHOLD ? 'black' : 'white'
 }
 
 export const penPointsToPathLayer = (
@@ -151,7 +160,7 @@ export const penPointsToPathLayer = (
 export const getSvgPathFromStroke = (stroke: number[][]) => {
   if (!stroke.length) return ''
 
-  const d = stroke.reduce(
+  const pathData = stroke.reduce(
     (acc, [x0, y0], i, arr) => {
       const [x1, y1] = arr[(i + 1) % arr.length]
       acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2)
@@ -160,6 +169,6 @@ export const getSvgPathFromStroke = (stroke: number[][]) => {
     ['M', ...stroke[0], 'Q']
   )
 
-  d.push('Z')
-  return d.join(' ')
+  pathData.push('Z')
+  return pathData.join(' ')
 }
