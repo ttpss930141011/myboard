@@ -68,7 +68,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     findIntersectingLayersWithRectangle,
     saveHistory,
     getLayer,
-    startEditingWithChar,
+    setEditingLayer,
   } = useCanvasStore()
   
   const { undo, redo, canUndo, canRedo } = useCanvasHistory()
@@ -128,11 +128,14 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         y: point.y - canvasState.current.y,
       }
 
-      translateLayers(selectedLayers, offset)
+      // Use specific layerIds if provided, otherwise use selectedLayers
+      const layersToMove = canvasState.layerIds || selectedLayers
+      translateLayers(layersToMove, offset)
 
       setCanvasState({
         mode: CanvasMode.Translating,
         current: point,
+        layerIds: canvasState.layerIds, // Preserve layerIds if they were set
       })
     },
     [canvasState, selectedLayers, translateLayers, setCanvasState]
@@ -259,6 +262,24 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         resizeSelectedLayer(current)
       } else if (canvasState.mode === CanvasMode.Pencil) {
         continueDrawingHandler(current, e)
+      } else if (canvasState.mode === CanvasMode.PotentialDrag) {
+        // Check if movement exceeds threshold
+        const distance = Math.abs(current.x - canvasState.origin.x) + Math.abs(current.y - canvasState.origin.y)
+        if (distance > 5) {
+          // Start actual dragging - specify which layer(s) to move
+          saveHistory()
+          if (canvasState.wasSelected) {
+            // If layer was already selected, drag all selected layers
+            setCanvasState({ mode: CanvasMode.Translating, current })
+          } else {
+            // If layer wasn't selected, drag only this layer without selecting it
+            setCanvasState({ 
+              mode: CanvasMode.Translating, 
+              current,
+              layerIds: [canvasState.layerId]
+            })
+          }
+        }
       }
     },
     [
@@ -269,6 +290,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       continueDrawingHandler,
       updateSelectionNet,
       startMultiSelection,
+      selectLayers,
+      saveHistory,
+      setCanvasState,
     ]
   )
 
@@ -313,6 +337,21 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         insertPathHandler()
       } else if (canvasState.mode === CanvasMode.Inserting) {
         insertLayerWithPosition(canvasState.layerType, point)
+      } else if (canvasState.mode === CanvasMode.PotentialDrag) {
+        // This was a click, not a drag
+        const layer = getLayer(canvasState.layerId)
+        
+        if (!canvasState.wasSelected) {
+          // Select the layer if it wasn't selected
+          selectLayers([canvasState.layerId])
+        } else if (layer && (layer.type === LayerType.Text || layer.type === LayerType.Note)) {
+          // Enter edit mode if clicking on already selected text/note
+          setEditingLayer(canvasState.layerId)
+        }
+        
+        setCanvasState({
+          mode: CanvasMode.None,
+        })
       } else {
         setCanvasState({
           mode: CanvasMode.None,
@@ -327,6 +366,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       unselectLayersHandler,
       insertPathHandler,
       editingLayerId,
+      getLayer,
+      selectLayers,
+      setEditingLayer,
     ]
   )
 
@@ -343,15 +385,15 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
       const point = pointerEventToCanvasPoint(e, camera)
 
-      if (!selectedLayers.includes(layerId)) {
-        selectLayers([layerId])
-      }
-
-      // Save history before starting to translate
-      saveHistory()
-      setCanvasState({ mode: CanvasMode.Translating, current: point })
+      // Enter PotentialDrag mode instead of immediately translating
+      setCanvasState({ 
+        mode: CanvasMode.PotentialDrag, 
+        layerId,
+        origin: point,
+        wasSelected: selectedLayers.includes(layerId)
+      })
     },
-    [camera, canvasState.mode, selectedLayers, selectLayers, setCanvasState, saveHistory]
+    [camera, canvasState.mode, selectedLayers, setCanvasState]
   )
 
   const layerIdsToColorSelection = useMemo(() => {
@@ -399,18 +441,6 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         }
       }
       
-      // Handle keyboard input for selected Note/Text layers
-      if (selectedLayers.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        const layer = getLayer(selectedLayers[0])
-        
-        if (layer && (layer.type === LayerType.Note || layer.type === LayerType.Text)) {
-          // Check if it's a printable character (excluding special keys)
-          if (e.key.length === 1 && !e.key.match(/[\x00-\x1F\x7F-\x9F]/)) {
-            e.preventDefault()
-            startEditingWithChar(selectedLayers[0], e.key)
-          }
-        }
-      }
     }
 
     document.addEventListener('keydown', onKeyDown)
@@ -418,7 +448,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     return () => {
       document.removeEventListener('keydown', onKeyDown)
     }
-  }, [undo, redo, selectedLayers, deleteLayers, getLayer, startEditingWithChar])
+  }, [undo, redo, selectedLayers, deleteLayers, getLayer])
 
   if (isLoading) {
     return <Loading />

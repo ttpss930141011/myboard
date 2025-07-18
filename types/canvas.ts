@@ -99,6 +99,7 @@ export type CanvasState =
   | {
       mode: CanvasMode.Translating
       current: Point
+      layerIds?: string[]
     }
   | {
       mode: CanvasMode.Inserting
@@ -120,6 +121,12 @@ export type CanvasState =
       initialBounds: XYWH
       corner: Side
     }
+  | {
+      mode: CanvasMode.PotentialDrag
+      layerId: string
+      origin: Point
+      wasSelected: boolean
+    }
 
 export enum CanvasMode {
   None,
@@ -129,6 +136,7 @@ export enum CanvasMode {
   Inserting,
   Resizing,
   Pencil,
+  PotentialDrag,
 }
 
 export type Layer =

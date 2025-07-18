@@ -88,7 +88,6 @@ interface CanvasStore {
   
   // Editing operations
   setEditingLayer: (id: string | null) => void
-  startEditingWithChar: (id: string, char: string) => void
   
   // Utilities
   getLayer: (id: string) => Layer | undefined
@@ -386,22 +385,6 @@ export const useCanvasStore = create<CanvasStore>()(
       setEditingLayer: (id) => set(state => {
         state.editingLayerId = id
       }),
-      
-      startEditingWithChar: (id, char) => {
-        get().saveHistory()
-        set(state => {
-          state.editingLayerId = id
-          // 直接更新層的值為初始字符
-          const layer = state.layers.get(id)
-          if (layer && ('value' in layer)) {
-            state.layers.set(id, {
-              ...layer,
-              value: char
-            })
-          }
-        })
-        get().saveToDatabase()
-      },
       
       getLayer: (id) => get().layers.get(id),
       

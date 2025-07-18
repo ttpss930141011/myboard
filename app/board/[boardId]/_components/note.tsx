@@ -119,22 +119,12 @@ export const Note = ({
     setFontSize(optimalSize)
   }, [width, height, value, editValue])
 
-  // Handle keyboard-triggered editing
-  useEffect(() => {
-    if (isEditing && textareaRef.current && editValue.length === 1 && value && value.length > 1) {
-      // This was triggered by keyboard input that replaced all text
-      // Place cursor after the typed character
-      textareaRef.current.setSelectionRange(1, 1)
-    }
-  }, [isEditing, editValue, value])
 
   const handleDoubleClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
     e.stopPropagation()
     if (!isEditing) {
       setEditingLayer(id)
     }
-    // Select all text on double-click
-    e.currentTarget.select()
   }
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -185,12 +175,6 @@ export const Note = ({
           onBlur={handleTextareaBlur}
           onKeyDown={handleTextareaKeyDown}
           onDoubleClick={handleDoubleClick}
-          onFocus={() => {
-            // Enter edit mode when textarea gets focus from click
-            if (!isEditing && selectionColor) {
-              setEditingLayer(id)
-            }
-          }}
           onMouseDown={(e) => {
             // Prevent dragging when clicking inside textarea during edit mode
             if (isEditing) {
