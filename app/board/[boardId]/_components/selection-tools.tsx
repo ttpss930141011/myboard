@@ -44,8 +44,10 @@ export const SelectionTools = memo(
 
     if (!selectionBounds) return null
 
-    const x = selectionBounds.x + selectionBounds.width / 2 + camera.x
-    const y = selectionBounds.y + camera.y
+    // Calculate position considering zoom
+    const zoom = (camera as any).zoom ?? 1
+    const x = selectionBounds.x * zoom + selectionBounds.width * zoom / 2 + camera.x
+    const y = selectionBounds.y * zoom + camera.y
 
     const moveToFront = () => {
       selectedLayers.forEach(id => bringToFront(id))

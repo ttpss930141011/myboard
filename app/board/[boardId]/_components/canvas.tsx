@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState, useEffect } from 'react'
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import { nanoid } from 'nanoid'
 
 import { Info } from './info'
@@ -9,6 +9,9 @@ import { Toolbar } from './toolbar'
 import { LayerPreview } from './layer-preview'
 import { SelectionBox } from './selection-box'
 import { SelectionTools } from './selection-tools'
+import { GridBackground } from './grid-background'
+import { CanvasLayers } from './canvas-layers'
+import { useZoom } from '@/hooks/use-zoom'
 
 import {
   colorToCss,
@@ -39,6 +42,25 @@ interface CanvasProps {
 
 export const Canvas = ({ boardId }: CanvasProps) => {
   const { isLoading } = useCanvas(boardId)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const rafRef = useRef<number>()
+  const { zoomIn, zoomOut, resetZoom } = useZoom()
+  
+  // Track window dimensions for grid background
+  const [dimensions, setDimensions] = useState({ width: 1920, height: 1080 })
+  
+  useEffect(() => {
+    const updateDimensions = () => {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight
+      })
+    }
+    
+    updateDimensions()
+    window.addEventListener('resize', updateDimensions)
+    return () => window.removeEventListener('resize', updateDimensions)
+  }, [])
   
   const {
     layers,
@@ -223,12 +245,63 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     [setCanvasState, saveHistory]
   )
 
-  const onWheel = useCallback((e: React.WheelEvent) => {
-    setCamera({
-      x: camera.x - e.deltaX,
-      y: camera.y - e.deltaY,
+  // Throttled camera update using requestAnimationFrame
+  const setThrottledCamera = useCallback((newCamera: Camera) => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+    }
+    rafRef.current = requestAnimationFrame(() => {
+      setCamera(newCamera)
     })
-  }, [setCamera, camera])
+  }, [setCamera])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+      }
+    }
+  }, [])
+
+  // Handle wheel events with zoom support
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const svg = svgRef.current
+      if (!svg) return
+      
+      const target = e.target as Node
+      if (!svg.contains(target)) return
+      
+      e.preventDefault()
+      e.stopPropagation()
+      
+      if (e.ctrlKey || e.metaKey) {
+        const rect = svg.getBoundingClientRect()
+        const center = {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        }
+        
+        const newCamera = e.deltaY < 0 
+          ? zoomIn(camera, center)
+          : zoomOut(camera, center)
+        setThrottledCamera(newCamera)
+      } else {
+        setThrottledCamera({
+          x: camera.x - e.deltaX,
+          y: camera.y - e.deltaY,
+          zoom: camera.zoom ?? 1
+        })
+      }
+    }
+    
+    document.addEventListener('wheel', handleWheel, { passive: false, capture: true })
+    
+    return () => {
+      document.removeEventListener('wheel', handleWheel, { capture: true })
+    }
+  }, [zoomIn, zoomOut, setThrottledCamera, camera])
 
   const startMultiSelection = useCallback(
     (current: Point, origin: Point) => {
@@ -262,6 +335,17 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         resizeSelectedLayer(current)
       } else if (canvasState.mode === CanvasMode.Pencil) {
         continueDrawingHandler(current, e)
+      } else if (canvasState.mode === CanvasMode.Panning) {
+        // Calculate screen-space delta from the original mouse position
+        const deltaX = e.clientX - canvasState.origin.x
+        const deltaY = e.clientY - canvasState.origin.y
+        
+        // Update camera based on the initial camera state plus delta
+        setThrottledCamera({
+          x: canvasState.startCamera.x + deltaX,
+          y: canvasState.startCamera.y + deltaY,
+          zoom: canvasState.startCamera.zoom ?? 1
+        })
       } else if (canvasState.mode === CanvasMode.PotentialDrag) {
         // Check if movement exceeds threshold
         const distance = Math.abs(current.x - canvasState.origin.x) + Math.abs(current.y - canvasState.origin.y)
@@ -293,6 +377,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       selectLayers,
       saveHistory,
       setCanvasState,
+      setThrottledCamera,
     ]
   )
 
@@ -303,6 +388,17 @@ export const Canvas = ({ boardId }: CanvasProps) => {
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
       const point = pointerEventToCanvasPoint(e, camera)
+
+      // Right-click for panning
+      if (e.button === 2) {
+        e.preventDefault()
+        setCanvasState({ 
+          mode: CanvasMode.Panning,
+          origin: { x: e.clientX, y: e.clientY },  // Store screen coordinates
+          startCamera: { ...camera }  // Store initial camera state
+        })
+        return
+      }
 
       if (canvasState.mode === CanvasMode.Inserting) {
         return
@@ -335,6 +431,10 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         })
       } else if (canvasState.mode === CanvasMode.Pencil) {
         insertPathHandler()
+      } else if (canvasState.mode === CanvasMode.Panning) {
+        setCanvasState({
+          mode: CanvasMode.None,
+        })
       } else if (canvasState.mode === CanvasMode.Inserting) {
         insertLayerWithPosition(canvasState.layerType, point)
       } else if (canvasState.mode === CanvasMode.PotentialDrag) {
@@ -374,6 +474,11 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
   const onLayerPointerDown = useCallback(
     (e: React.PointerEvent, layerId: string) => {
+      // Ignore right-click on layers
+      if (e.button === 2) {
+        return
+      }
+      
       if (
         canvasState.mode === CanvasMode.Pencil ||
         canvasState.mode === CanvasMode.Inserting
@@ -470,26 +575,37 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         setLastUsedColor={setLastUsedColor}
       />
       <svg
-        className="h-[100vh] w-[100vw]"
-        onWheel={onWheel}
+        ref={svgRef}
+        className="h-[100vh] w-[100vw] touch-none"
+        style={{
+          cursor: canvasState.mode === CanvasMode.Panning 
+            ? 'grabbing' 
+            : canvasState.mode === CanvasMode.Pencil 
+              ? 'crosshair'
+              : 'default'
+        }}
         onPointerMove={onPointerMove}
         onPointerLeave={onPointerLeave}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
+        onContextMenu={(e) => e.preventDefault()}
       >
+        <GridBackground
+          camera={camera}
+          width={dimensions.width}
+          height={dimensions.height}
+        />
+        
         <g
           style={{
-            transform: `translate(${camera.x}px, ${camera.y}px)`,
+            transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom ?? 1})`,
           }}
         >
-          {layerIds.map(layerId => (
-            <LayerPreview
-              key={layerId}
-              id={layerId}
-              onLayerPointerDown={onLayerPointerDown}
-              selectionColor={layerIdsToColorSelection[layerId]}
-            />
-          ))}
+          <CanvasLayers
+            layerIds={layerIds}
+            onLayerPointerDown={onLayerPointerDown}
+            layerIdsToColorSelection={layerIdsToColorSelection}
+          />
           <SelectionBox
             onResizeHandlePointerDown={onResizeHandlePointerDown}
           />
