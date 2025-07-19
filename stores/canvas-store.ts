@@ -409,12 +409,18 @@ export const useCanvasStore = create<CanvasStore>()(
           height: Math.abs(current.y - origin.y),
         }
         
-        layerIds.forEach(id => {
+        // Early exit for zero-size rectangle
+        if (rect.width === 0 || rect.height === 0) {
+          return intersecting
+        }
+        
+        // Use for...of for potential early optimization in future
+        for (const id of layerIds) {
           const layer = state.layers.get(id)
           if (layer && isIntersecting(layer, rect)) {
             intersecting.push(id)
           }
-        })
+        }
         
         return intersecting
       }
