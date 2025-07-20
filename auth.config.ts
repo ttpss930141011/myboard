@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import GitHubProvider from "next-auth/providers/github"
+import { AUTH_ROUTES, PUBLIC_ROUTES } from "@/lib/constants"
 
 /**
  * Edge-compatible configuration
@@ -11,26 +12,24 @@ export default {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      allowDangerousEmailAccountLinking: true,
     }),
     GitHubProvider({
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
-      allowDangerousEmailAccountLinking: true,
     }),
   ],
   pages: {
-    signIn: "/auth/signin",
-    error: "/auth/error",
+    signIn: AUTH_ROUTES.SIGN_IN,
+    error: AUTH_ROUTES.ERROR,
   },
   callbacks: {
     authorized({ request, auth }) {
       const { pathname } = request.nextUrl
       
       // Public routes
-      if (pathname.startsWith("/auth")) return true
-      if (pathname.startsWith("/board/share")) return true
-      if (pathname.startsWith("/api/auth")) return true
+      if (pathname.startsWith(PUBLIC_ROUTES.AUTH)) return true
+      if (pathname.startsWith(PUBLIC_ROUTES.BOARD_SHARE)) return true
+      if (pathname.startsWith(PUBLIC_ROUTES.API_AUTH)) return true
       
       // Protected routes
       return !!auth

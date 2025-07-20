@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 import { Button } from '@/components/ui/button'
+import { AUTH_ROUTES } from '@/lib/constants'
 
 export const EmptyOrg = () => (
   <div className="h-full flex flex-col items-center justify-center">
@@ -12,7 +13,7 @@ export const EmptyOrg = () => (
     </p>
     <div className="mt-6">
       <Button size="lg" asChild>
-        <Link href="/auth/signin">Sign in</Link>
+        <Link href={AUTH_ROUTES.SIGN_IN}>Sign in</Link>
       </Button>
     </div>
   </div>

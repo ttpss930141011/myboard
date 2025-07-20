@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import { AUTH_ROUTES } from "@/lib/constants"
 
 /**
  * Authentication service following Single Responsibility Principle
@@ -13,7 +14,7 @@ export class AuthService {
   static async requireAuth() {
     const session = await auth()
     if (!session?.user?.id) {
-      redirect("/auth/signin")
+      redirect(AUTH_ROUTES.SIGN_IN)
     }
     return session.user
   }

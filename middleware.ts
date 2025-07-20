@@ -1,15 +1,16 @@
 import { middleware } from "./auth-edge"
 import { NextResponse } from "next/server"
+import { AUTH_ROUTES, PUBLIC_ROUTES } from "@/lib/constants"
 
 export default middleware((req) => {
   const isLoggedIn = !!req.auth
   const pathname = req.nextUrl.pathname
   
   // Public routes
-  const isAuthPage = pathname.startsWith("/auth")
-  const isPublicShare = pathname.startsWith("/board/share")
+  const isAuthPage = pathname.startsWith(PUBLIC_ROUTES.AUTH)
+  const isPublicShare = pathname.startsWith(PUBLIC_ROUTES.BOARD_SHARE)
   const isPublicAsset = pathname.includes(".")
-  const isApiAuth = pathname.startsWith("/api/auth")
+  const isApiAuth = pathname.startsWith(PUBLIC_ROUTES.API_AUTH)
   
   // Allow public access
   if (isAuthPage || isPublicShare || isPublicAsset || isApiAuth) {
@@ -18,8 +19,8 @@ export default middleware((req) => {
   
   // Protect all other routes
   if (!isLoggedIn) {
-    const signInUrl = new URL("/auth/signin", req.url)
-    signInUrl.searchParams.set("callbackUrl", pathname)
+    const signInUrl = new URL(AUTH_ROUTES.SIGN_IN, req.url)
+    signInUrl.searchParams.set(AUTH_ROUTES.CALLBACK_URL_PARAM, pathname)
     return NextResponse.redirect(signInUrl)
   }
   
