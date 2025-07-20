@@ -1,6 +1,6 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import { BringToFront, SendToBack, Trash2 } from 'lucide-react'
 
 import { Hint } from '@/components/hint'
@@ -24,8 +24,23 @@ export const SelectionTools = memo(
     const sendToBack = useCanvasStore(state => state.sendToBack)
     const deleteLayers = useCanvasStore(state => state.deleteLayers)
     const updateLayerColor = useCanvasStore(state => state.updateLayerColor)
+    const getSelectedLayers = useCanvasStore(state => state.getSelectedLayers)
 
     const selectionBounds = useSelectionBounds()
+
+    const currentColor = useMemo(() => {
+      const layers = getSelectedLayers()
+      if (layers.length === 0) return undefined
+      
+      const firstColor = layers[0].fill
+      const allSameColor = layers.every(layer => 
+        layer.fill.r === firstColor.r &&
+        layer.fill.g === firstColor.g &&
+        layer.fill.b === firstColor.b
+      )
+      
+      return allSameColor ? firstColor : undefined
+    }, [getSelectedLayers, selectedLayers])
 
     if (!selectionBounds) return null
 
@@ -59,7 +74,7 @@ export const SelectionTools = memo(
           )`,
         }}
       >
-        <ColorPickerPopover onChange={setFill} />
+        <ColorPickerPopover onChange={setFill} currentColor={currentColor} />
         <div className="flex items-center gap-1 px-1 border-l border-neutral-200">
           <Hint label="Bring to front">
             <Button
