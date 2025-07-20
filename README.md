@@ -1,8 +1,20 @@
 # Personal Miro - Online Whiteboard & Drawing Tool
 
-![Personal Miro - Online Whiteboard & Drawing Tool](https://github.com/ttpss930141011/personal-miro/assets/93012310/8d85080c-f3a7-412f-8194-b45b601a17e4)
+**A single-user Miro clone whiteboard app with local state management using Zustand and PostgreSQL persistence - no real-time collaboration, no Liveblocks/Convex dependencies, just pure personal drawing and creativity.**
 
-A personal online whiteboard and drawing application built with Next.js 14, React, Prisma, PostgreSQL, TypeScript, and Tailwind CSS. Create, draw, and organize your ideas in a feature-rich digital canvas - no collaboration needed, just pure creativity!
+Originally forked from [aftabrehan/board-wex](https://github.com/aftabrehan/board-wex), this project has been completely refactored to remove expensive SaaS dependencies (Liveblocks & Convex) and transformed into a self-hostable personal whiteboard solution.
+
+## 🎯 Why This Fork?
+
+The original project relied heavily on paid SaaS services:
+- **Liveblocks** - Real-time collaboration service (usage-based pricing)
+- **Convex** - Backend-as-a-Service platform (usage-based pricing)
+
+This fork removes these dependencies to create a **completely free and self-hostable** solution:
+- ✅ **No monthly fees** - Use your own PostgreSQL database
+- ✅ **Full data ownership** - Your drawings stay on your server
+- ✅ **Simple architecture** - Zustand for state, Prisma for persistence
+- ✅ **Easy deployment** - Standard Next.js app, deploy anywhere
 
 ## ✨ Features
 
@@ -203,6 +215,38 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+## 🚀 Roadmap
+
+### Phase 1: Remove SaaS Dependencies ✅
+- [x] Remove Liveblocks real-time collaboration
+- [x] Remove Convex backend
+- [x] Implement Zustand for local state management
+- [x] Add PostgreSQL with Prisma for persistence
+- [x] Implement auto-save functionality
+
+### Phase 2: Authentication Independence 🚧
+- [ ] **Remove Clerk dependency** (Next priority!)
+- [ ] Implement self-hosted authentication
+  - [ ] NextAuth.js integration
+  - [ ] Local user management
+  - [ ] Optional OAuth providers (Google, GitHub)
+- [ ] Migrate existing user data
+
+### Phase 3: Enhanced Features 📋
+- [ ] Offline mode with sync
+- [ ] Export functionality (PNG, SVG, PDF)
+- [ ] Import from other formats
+- [ ] More drawing tools (arrows, lines, polygons)
+- [ ] Custom fonts and text styling
+- [ ] Board templates
+
+### Phase 4: Performance & Deployment 🎯
+- [ ] Canvas performance optimizations
+- [ ] Docker containerization
+- [ ] One-click deployment scripts
+- [ ] Backup and restore functionality
+- [ ] Multi-language support
 
 ## 📄 License
 
