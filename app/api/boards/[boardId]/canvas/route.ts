@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs'
+import { AuthService } from '@/lib/auth/auth-service'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
@@ -31,34 +31,28 @@ export async function PUT(
   { params }: { params: { boardId: string } }
 ) {
   try {
-    const { userId, orgId } = auth()
-    if (!userId || !orgId) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+    const user = await AuthService.requireAuth()
     
     const canvasData = await request.json()
     
-    // Verify board belongs to user's org
-    const board = await prisma.board.findFirst({
-      where: {
-        id: params.boardId,
-        orgId
-      }
+    // Verify the user owns the board
+    const board = await prisma.board.findUnique({
+      where: { id: params.boardId },
+      select: { userId: true }
     })
     
-    if (!board) {
+    if (!board || board.userId !== user.id) {
       return new Response('Not found', { status: 404 })
     }
     
-    // Update canvas data
     await prisma.board.update({
       where: { id: params.boardId },
       data: { canvasData }
     })
     
-    return new Response(null, { status: 204 })
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error saving canvas:', error)
+    console.error('Error updating canvas:', error)
     return new Response('Internal Server Error', { status: 500 })
   }
 }

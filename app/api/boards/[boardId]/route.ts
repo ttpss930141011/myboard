@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs'
+import { AuthService } from '@/lib/auth/auth-service'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
@@ -19,8 +19,7 @@ export async function GET(
       _id: board.id,
       _creationTime: board.createdAt.getTime(),
       title: board.title,
-      orgId: board.orgId,
-      authorId: board.authorId,
+      authorId: board.userId,
       authorName: board.authorName,
       imageUrl: board.imageUrl
     })
@@ -35,10 +34,7 @@ export async function PATCH(
   { params }: { params: { boardId: string } }
 ) {
   try {
-    const { userId, orgId } = auth()
-    if (!userId || !orgId) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+    const user = await AuthService.requireAuth()
     
     const { title } = await request.json()
     
@@ -50,26 +46,27 @@ export async function PATCH(
       return new Response('Title cannot be longer than 60 characters', { status: 400 })
     }
     
-    // Verify board belongs to user's org
-    const board = await prisma.board.findFirst({
-      where: {
-        id: params.boardId,
-        orgId
-      }
+    // Verify the user owns the board
+    const board = await prisma.board.findUnique({
+      where: { id: params.boardId }
     })
     
-    if (!board) {
+    if (!board || board.userId !== user.id) {
       return new Response('Not found', { status: 404 })
     }
     
-    const updated = await prisma.board.update({
+    const updatedBoard = await prisma.board.update({
       where: { id: params.boardId },
       data: { title: title.trim() }
     })
     
     return NextResponse.json({
-      _id: updated.id,
-      title: updated.title
+      _id: updatedBoard.id,
+      _creationTime: updatedBoard.createdAt.getTime(),
+      title: updatedBoard.title,
+      authorId: updatedBoard.userId,
+      authorName: updatedBoard.authorName,
+      imageUrl: updatedBoard.imageUrl
     })
   } catch (error) {
     console.error('Error updating board:', error)
@@ -82,24 +79,17 @@ export async function DELETE(
   { params }: { params: { boardId: string } }
 ) {
   try {
-    const { userId, orgId } = auth()
-    if (!userId || !orgId) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+    const user = await AuthService.requireAuth()
     
-    // Verify board belongs to user's org
-    const board = await prisma.board.findFirst({
-      where: {
-        id: params.boardId,
-        orgId
-      }
+    // Verify the user owns the board
+    const board = await prisma.board.findUnique({
+      where: { id: params.boardId }
     })
     
-    if (!board) {
+    if (!board || board.userId !== user.id) {
       return new Response('Not found', { status: 404 })
     }
     
-    // Delete board (favorites will cascade delete)
     await prisma.board.delete({
       where: { id: params.boardId }
     })

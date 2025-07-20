@@ -1,13 +1,10 @@
-import { auth, currentUser } from '@clerk/nextjs'
+import { AuthService } from '@/lib/auth/auth-service'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
   try {
-    const { userId, orgId } = auth()
-    if (!userId || !orgId) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+    const user = await AuthService.requireAuth()
     
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
@@ -18,14 +15,14 @@ export async function GET(request: Request) {
     if (favorites === 'true') {
       boards = await prisma.board.findMany({
         where: {
-          orgId,
+          userId: user.id,
           favorites: {
-            some: { userId }
+            some: { userId: user.id }
           }
         },
         include: {
           favorites: {
-            where: { userId }
+            where: { userId: user.id }
           }
         },
         orderBy: { createdAt: 'desc' }
@@ -33,7 +30,7 @@ export async function GET(request: Request) {
     } else if (search) {
       boards = await prisma.board.findMany({
         where: {
-          orgId,
+          userId: user.id,
           title: {
             contains: search,
             mode: 'insensitive'
@@ -41,17 +38,17 @@ export async function GET(request: Request) {
         },
         include: {
           favorites: {
-            where: { userId }
+            where: { userId: user.id }
           }
         },
         orderBy: { createdAt: 'desc' }
       })
     } else {
       boards = await prisma.board.findMany({
-        where: { orgId },
+        where: { userId: user.id },
         include: {
           favorites: {
-            where: { userId }
+            where: { userId: user.id }
           }
         },
         orderBy: { createdAt: 'desc' }
@@ -63,8 +60,7 @@ export async function GET(request: Request) {
       _id: board.id,
       _creationTime: board.createdAt.getTime(),
       title: board.title,
-      orgId: board.orgId,
-      authorId: board.authorId,
+      authorId: board.userId,
       authorName: board.authorName,
       imageUrl: board.imageUrl,
       isFavorite: board.favorites.length > 0
@@ -79,12 +75,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { userId, orgId } = auth()
-    const user = await currentUser()
-    
-    if (!userId || !orgId || !user) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+    const user = await AuthService.requireAuth()
     
     const { title } = await request.json()
     
@@ -114,9 +105,8 @@ export async function POST(request: Request) {
     const board = await prisma.board.create({
       data: {
         title: title.trim(),
-        orgId,
-        authorId: userId,
-        authorName: user.firstName || 'User',
+        userId: user.id,
+        authorName: user.name || 'User',
         imageUrl: randomImage,
         canvasData: {
           layers: {},
@@ -129,8 +119,7 @@ export async function POST(request: Request) {
       _id: board.id,
       _creationTime: board.createdAt.getTime(),
       title: board.title,
-      orgId: board.orgId,
-      authorId: board.authorId,
+      authorId: board.userId,
       authorName: board.authorName,
       imageUrl: board.imageUrl
     })

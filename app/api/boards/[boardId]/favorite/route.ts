@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs'
+import { AuthService } from '@/lib/auth/auth-service'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
@@ -7,16 +7,13 @@ export async function POST(
   { params }: { params: { boardId: string } }
 ) {
   try {
-    const { userId, orgId } = auth()
-    if (!userId || !orgId) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+    const user = await AuthService.requireAuth()
     
-    // Verify board exists and belongs to user's org
+    // Verify board exists and belongs to user
     const board = await prisma.board.findFirst({
       where: {
         id: params.boardId,
-        orgId
+        userId: user.id
       }
     })
     
@@ -28,7 +25,7 @@ export async function POST(
     const existingFavorite = await prisma.userFavorite.findUnique({
       where: {
         userId_boardId: {
-          userId,
+          userId: user.id,
           boardId: params.boardId
         }
       }
@@ -41,16 +38,12 @@ export async function POST(
     // Create favorite
     await prisma.userFavorite.create({
       data: {
-        userId,
-        boardId: params.boardId,
-        orgId
+        userId: user.id,
+        boardId: params.boardId
       }
     })
     
-    return NextResponse.json({
-      _id: board.id,
-      title: board.title
-    })
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error favoriting board:', error)
     return new Response('Internal Server Error', { status: 500 })
@@ -62,32 +55,29 @@ export async function DELETE(
   { params }: { params: { boardId: string } }
 ) {
   try {
-    const { userId, orgId } = auth()
-    if (!userId || !orgId) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+    const user = await AuthService.requireAuth()
     
-    // Find and delete favorite
-    const favorite = await prisma.userFavorite.findUnique({
+    // Verify board exists and belongs to user
+    const board = await prisma.board.findFirst({
       where: {
-        userId_boardId: {
-          userId,
-          boardId: params.boardId
-        }
+        id: params.boardId,
+        userId: user.id
       }
     })
     
-    if (!favorite) {
-      return new Response('Favorite not found', { status: 404 })
+    if (!board) {
+      return new Response('Board not found', { status: 404 })
     }
     
-    await prisma.userFavorite.delete({
+    // Delete favorite
+    await prisma.userFavorite.deleteMany({
       where: {
-        id: favorite.id
+        userId: user.id,
+        boardId: params.boardId
       }
     })
     
-    return new Response(null, { status: 204 })
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error unfavoriting board:', error)
     return new Response('Internal Server Error', { status: 500 })

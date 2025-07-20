@@ -1,10 +1,31 @@
-import { authMiddleware } from "@clerk/nextjs";
- 
-// This example protects all routes including api/trpc routes
-// Please edit this to allow other routes to be public as needed.
-// See https://clerk.com/docs/references/nextjs/auth-middleware for more information about configuring your Middleware
-export default authMiddleware({});
- 
+import { auth } from "./auth"
+import { NextResponse } from "next/server"
+
+export default auth((req) => {
+  const isLoggedIn = !!req.auth
+  const pathname = req.nextUrl.pathname
+  
+  // Public routes
+  const isAuthPage = pathname.startsWith("/auth")
+  const isPublicShare = pathname.startsWith("/board/share")
+  const isPublicAsset = pathname.includes(".")
+  const isApiAuth = pathname.startsWith("/api/auth")
+  
+  // Allow public access
+  if (isAuthPage || isPublicShare || isPublicAsset || isApiAuth) {
+    return NextResponse.next()
+  }
+  
+  // Protect all other routes
+  if (!isLoggedIn) {
+    const signInUrl = new URL("/auth/signin", req.url)
+    signInUrl.searchParams.set("callbackUrl", pathname)
+    return NextResponse.redirect(signInUrl)
+  }
+  
+  return NextResponse.next()
+})
+
 export const config = {
-  matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],
-};
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+}
