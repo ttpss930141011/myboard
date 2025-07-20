@@ -67,7 +67,7 @@ const findOptimalFontSize = (
 interface TextProps {
   id: string
   layer: TextLayer
-  onPointerDown: (e: React.PointerEvent, id: string) => void
+  onPointerDown?: (e: React.PointerEvent, id: string) => void
   selectionColor?: string
 }
 
@@ -181,7 +181,7 @@ export const Text = ({
       width={width}
       height={height}
       onPointerDown={e => {
-        if (!isEditing) {
+        if (!isEditing && onPointerDown) {
           onPointerDown(e, id)
         }
       }}
