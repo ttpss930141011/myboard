@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useAuth } from '@clerk/nextjs'
+import { useSession } from 'next-auth/react'
 import { MoreHorizontal } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -18,7 +18,6 @@ interface BoardCardProps {
   authorId: string
   createdAt: number
   imageUrl: string
-  orgId: string
   isFavorite: boolean
 }
 
@@ -29,12 +28,11 @@ export const BoardCard = ({
   authorName,
   createdAt,
   imageUrl,
-  orgId,
   isFavorite,
 }: BoardCardProps) => {
-  const { userId } = useAuth()
+  const { data: session } = useSession()
 
-  const authorLabel = userId === authorId ? 'You' : authorName
+  const authorLabel = session?.user?.id === authorId ? 'You' : authorName
   const createdAtLabel = formatDistanceToNow(createdAt, {
     addSuffix: true,
   })

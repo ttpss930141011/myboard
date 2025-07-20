@@ -1,17 +1,17 @@
 'use client'
 
 import Image from 'next/image'
-import { useOrganization } from '@clerk/nextjs'
+import { useSession } from 'next-auth/react'
 
 import { Button } from '@/components/ui/button'
 import { useCreateBoard } from '@/hooks/api/use-boards'
 
 export const EmptyBoards = () => {
-  const { organization } = useOrganization()
+  const { data: session } = useSession()
   const createBoard = useCreateBoard()
 
   const onClick = () => {
-    if (!organization) return
+    if (!session) return
 
     createBoard.mutate({ title: 'Untitled' })
   }
@@ -21,7 +21,7 @@ export const EmptyBoards = () => {
       <Image src="/note.svg" height={110} width={110} alt="Empty" />
       <h2 className="text-2xl font-semibold mt-6">Create your first board!</h2>
       <p className="text-muted-foreground textg-sm mt-2">
-        Start by creating a board for your organization
+        Start by creating a board for your workspace
       </p>
       <div className="mt-6">
         <Button disabled={createBoard.isPending} onClick={onClick} size="lg">

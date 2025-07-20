@@ -1,19 +1,18 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useOrganization } from '@clerk/nextjs'
+import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 
 export function useFavoriteBoard(boardId: string) {
   const queryClient = useQueryClient()
-  const { organization } = useOrganization()
+  const { data: session } = useSession()
   
   return useMutation({
     mutationFn: async () => {
-      if (!organization?.id) throw new Error('No organization')
+      if (!session?.user?.id) throw new Error('Not authenticated')
       
       const res = await fetch(`/api/boards/${boardId}/favorite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orgId: organization.id }),
       })
       
       if (!res.ok) {
@@ -24,7 +23,7 @@ export function useFavoriteBoard(boardId: string) {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['boards', organization?.id] })
+      queryClient.invalidateQueries({ queryKey: ['boards'] })
       toast.success('Added to favorites!')
     },
     onError: (error: Error) => {
@@ -35,7 +34,7 @@ export function useFavoriteBoard(boardId: string) {
 
 export function useUnfavoriteBoard(boardId: string) {
   const queryClient = useQueryClient()
-  const { organization } = useOrganization()
+  const { data: session } = useSession()
   
   return useMutation({
     mutationFn: async () => {
@@ -48,7 +47,7 @@ export function useUnfavoriteBoard(boardId: string) {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['boards', organization?.id] })
+      queryClient.invalidateQueries({ queryKey: ['boards'] })
       toast.success('Removed from favorites!')
     },
     onError: () => {
