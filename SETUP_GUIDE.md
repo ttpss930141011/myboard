@@ -28,7 +28,7 @@ CLERK_JWT_ISSUER_DOMAIN="https://[your-clerk-domain].clerk.accounts.dev"
 #### 1. PostgreSQL Database URL
 You have several options:
 
-**Option A - Use the provided Zeabur database:**
+**Option A - Use a cloud database (e.g., Zeabur, Supabase, Neon):**
 ```bash
 DATABASE_URL="postgresql://[user]:[password]@[host]:[port]/[database]"
 ```
