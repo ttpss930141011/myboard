@@ -5,7 +5,7 @@ import { LayerPreview } from './layer-preview'
 
 interface CanvasLayersProps {
   layerIds: string[]
-  onLayerPointerDown: (e: React.PointerEvent, layerId: string) => void
+  onLayerPointerDown?: (e: React.PointerEvent, layerId: string) => void
   layerIdsToColorSelection: Record<string, string>
 }
 
