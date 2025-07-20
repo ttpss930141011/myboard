@@ -15,8 +15,8 @@ model Board {
   authorId    String
   authorName  String
   
-  // Canvas data stored as JSON
-  canvasData  Json?    @default("{}")
+  // Canvas data stored as JSONB for better performance
+  canvasData  Json?    @default("{}") @db.JsonB
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
