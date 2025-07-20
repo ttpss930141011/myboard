@@ -1,14 +1,11 @@
 'use client'
 
-import { useQuery } from 'convex/react'
-
+import { useBoards } from '@/hooks/api/use-boards'
 import { BoardCard } from './board-card'
 import { EmptySearch } from './empty-search'
 import { EmptyBoards } from './empty-boards'
 import { EmptyFavorites } from './empty-favorites'
 import { NewBoardButton } from './new-board-button'
-
-import { api } from '@/convex/_generated/api'
 
 interface BoardListProps {
   orgId: string
@@ -19,12 +16,12 @@ interface BoardListProps {
 }
 
 export const BoardList = ({ orgId, query }: BoardListProps) => {
-  const data = useQuery(api.boards.get, {
-    orgId,
-    ...query,
+  const { data, isLoading } = useBoards({
+    search: query.search,
+    favorites: query.favorites === 'true',
   })
 
-  if (data === undefined) {
+  if (isLoading) {
     return (
       <div>
         <h2 className="text-3xl">
@@ -70,7 +67,7 @@ export const BoardList = ({ orgId, query }: BoardListProps) => {
             authorName={board.authorName}
             createdAt={board._creationTime}
             orgId={board.orgId}
-            isFavorite={board.isFavorite}
+            isFavorite={board.isFavorite || false}
           />
         ))}
       </div>

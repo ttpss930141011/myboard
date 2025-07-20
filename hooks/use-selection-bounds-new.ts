@@ -1,9 +1,8 @@
-import { shallow } from '@liveblocks/react'
-
+import { shallow } from 'zustand/shallow'
+import { useCanvasStore } from '@/stores/canvas-store'
 import { Layer, XYWH } from '@/types/canvas'
-import { useStorage, useSelf } from '@/liveblocks.config'
 
-const boundingBox = (layers: Layer[]): XYWH | null => {
+function boundingBox(layers: Layer[]): XYWH | null {
   const first = layers[0]
 
   if (!first) {
@@ -44,13 +43,14 @@ const boundingBox = (layers: Layer[]): XYWH | null => {
 }
 
 export const useSelectionBounds = () => {
-  const selection = useSelf(me => me.presence.selection)
+  const selection = useCanvasStore(state => state.selectedLayers, shallow)
+  const layers = useCanvasStore(state => state.layers)
 
-  return useStorage(root => {
-    const selectedLayers = selection
-      .map(layerId => root.layers.get(layerId)!)
-      .filter(Boolean)
-
-    return boundingBox(selectedLayers)
-  }, shallow)
+  const selectedLayersData = selection
+    .map(id => layers.get(id))
+    .filter((layer): layer is Layer => layer !== undefined)
+  
+  const bounds = boundingBox(selectedLayersData)
+  
+  return bounds
 }

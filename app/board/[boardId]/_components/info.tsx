@@ -3,17 +3,15 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Poppins } from 'next/font/google'
-import { useQuery } from 'convex/react'
 import { Menu } from 'lucide-react'
 
 import { Hint } from '@/components/hint'
-import { api } from '@/convex/_generated/api'
 import { Actions } from '@/components/actions'
 import { Button } from '@/components/ui/button'
 
 import { cn } from '@/lib/utils'
-import { Id } from '@/convex/_generated/dataModel'
 import { useRenameModal } from '@/store/use-rename-modal'
+import { useBoard } from '@/hooks/api/use-boards'
 
 interface InfoProps {
   boardId: string
@@ -25,12 +23,9 @@ const TabSeparator = () => <div className="text-neutral-300 px-1.5">|</div>
 
 export const Info = ({ boardId }: InfoProps) => {
   const { onOpen } = useRenameModal()
+  const { data, isLoading } = useBoard(boardId)
 
-  const data = useQuery(api.board.get, {
-    id: boardId as Id<'boards'>,
-  })
-
-  if (!data) return <InfoSkeleton />
+  if (isLoading || !data) return <InfoSkeleton />
 
   return (
     <div className="absolute top-2 left-2 bg-white rounded-md px-1.5 h-12 flex items-center shadow-md">

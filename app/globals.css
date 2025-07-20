@@ -81,4 +81,15 @@ body,
   body {
     @apply bg-background text-foreground;
   }
+  /* Remove all focus outlines from textareas */
+  textarea:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    border-color: transparent !important;
+  }
+  /* Remove any webkit-specific focus styles */
+  textarea:focus-visible {
+    outline: none !important;
+  }
+  
 }

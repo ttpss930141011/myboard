@@ -7,6 +7,7 @@ export type Color = {
 export type Camera = {
   x: number
   y: number
+  zoom?: number // Optional for backward compatibility
 }
 
 export enum LayerType {
@@ -99,6 +100,7 @@ export type CanvasState =
   | {
       mode: CanvasMode.Translating
       current: Point
+      layerIds?: string[]
     }
   | {
       mode: CanvasMode.Inserting
@@ -120,6 +122,17 @@ export type CanvasState =
       initialBounds: XYWH
       corner: Side
     }
+  | {
+      mode: CanvasMode.PotentialDrag
+      layerId: string
+      origin: Point
+      wasSelected: boolean
+    }
+  | {
+      mode: CanvasMode.Panning
+      origin: Point
+      startCamera: Camera
+    }
 
 export enum CanvasMode {
   None,
@@ -129,6 +142,8 @@ export enum CanvasMode {
   Inserting,
   Resizing,
   Pencil,
+  PotentialDrag,
+  Panning,
 }
 
 export type Layer =

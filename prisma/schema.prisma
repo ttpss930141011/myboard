@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Board {
+  id          String   @id @default(cuid())
+  title       String
+  imageUrl    String
+  orgId       String
+  authorId    String
+  authorName  String
+  
+  // Canvas data stored as JSON
+  canvasData  Json?    @default("{}")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  favorites   UserFavorite[]
+  
+  // Indexes for performance
+  @@index([orgId])
+  @@index([authorId])
+  @@index([title])
+}
+
+model UserFavorite {
+  id        String   @id @default(cuid())
+  userId    String
+  boardId   String
+  orgId     String
+  
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, boardId])
+  @@index([userId, orgId])
+}
+
+// Optional: Store canvas history for undo/redo persistence
+model CanvasHistory {
+  id          String   @id @default(cuid())
+  boardId     String
+  userId      String
+  action      String   // "create", "update", "delete"
+  data        Json     // Changed data
+  timestamp   DateTime @default(now())
+  
+  @@index([boardId])
+}
