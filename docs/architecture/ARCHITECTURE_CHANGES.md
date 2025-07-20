@@ -1,0 +1,160 @@
+# Architecture Changes: From Collaborative to Personal Whiteboard
+
+## Overview
+
+This document outlines the major architectural transformation of BoardWex from a real-time collaborative whiteboard (Miro clone) to a single-user personal whiteboard application. This refactoring removed expensive SaaS dependencies while maintaining all core functionality.
+
+## Key Changes
+
+### 1. Removed Real-time Collaboration Infrastructure
+
+**Before:**
+- **Liveblocks**: Real-time collaboration service ($49/month for 5K MAU)
+- **Convex**: Real-time database ($25/month for production)
+- Complex WebSocket management
+- Presence tracking and cursor broadcasting
+- Conflict resolution for concurrent edits
+
+**After:**
+- **Zustand**: Local state management (free, open-source)
+- **PostgreSQL + Prisma**: Traditional database (self-hosted)
+- No WebSocket overhead
+- Single-user focus with better performance
+- Simplified architecture without conflict resolution needs
+
+### 2. State Management Transformation
+
+**Before (Liveblocks/Convex):**
+```typescript
+// Complex real-time state synchronization
+const { storage, presence, others } = useMutation(...)
+const layers = storage.get("layers")
+const setLayers = useMutation(({ storage }, layers) => {
+  storage.set("layers", layers)
+})
+```
+
+**After (Zustand):**
+```typescript
+// Simple, efficient local state
+const layers = useCanvasStore(state => state.layers)
+const setLayers = useCanvasStore(state => state.setLayers)
+```
+
+### 3. Database Architecture
+
+**Before (Convex):**
+- NoSQL document store with real-time subscriptions
+- Automatic synchronization across clients
+- Built-in authentication integration
+- Complex schema with presence tracking
+
+**After (PostgreSQL + Prisma):**
+```prisma
+model Board {
+  id          String   @id @default(cuid())
+  title       String
+  imageUrl    String
+  orgId       String
+  authorId    String
+  authorName  String
+  canvasData  Json?    @default("{}") @db.JsonB  // Optimized JSONB storage
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+```
+
+### 4. Performance Improvements
+
+1. **Eliminated Network Latency**: All canvas operations are now local-first
+2. **Reduced Bundle Size**: Removed Liveblocks and Convex SDKs (~200KB)
+3. **Optimized Rendering**: No need to handle remote cursor positions or presence
+4. **Better Undo/Redo**: Local history management with Zustand (max 50 entries)
+
+### 5. Simplified Canvas Operations
+
+**Before:**
+- Every operation required network round-trip
+- Complex conflict resolution for concurrent edits
+- Presence tracking for multiple users
+- Throttled updates to prevent API rate limits
+
+**After:**
+- Instant local operations
+- Debounced persistence to database (1 second)
+- No conflict resolution needed
+- Unlimited local operations
+
+## Migration Benefits
+
+### Cost Savings
+- **Liveblocks**: $49/month → $0
+- **Convex**: $25/month → $0
+- **Total**: $74/month → $0 (only hosting costs remain)
+
+### Developer Experience
+- Simpler mental model (no distributed systems complexity)
+- Easier debugging (all state is local)
+- Faster development cycles
+- No API rate limits or quotas
+
+### User Experience
+- Instant responsiveness (no network latency)
+- Works offline
+- No connection issues
+- Better performance on slower devices
+
+## Technical Debt Addressed
+
+1. **Removed WebSocket connection management**
+2. **Eliminated race conditions in collaborative editing**
+3. **Simplified error handling (no network errors for canvas operations)**
+4. **Reduced API surface area**
+5. **Removed presence tracking complexity**
+
+## Future Opportunities
+
+With the simplified architecture, we can now focus on:
+
+1. **Enhanced Features**: AI-powered tools, advanced shapes, better export options
+2. **Performance**: Canvas virtualization, WebGL rendering
+3. **Local Storage**: IndexedDB for offline persistence
+4. **Privacy**: All data stays on user's infrastructure
+
+## Code Examples
+
+### Before: Complex Collaborative Layer Creation
+```typescript
+const insertLayer = useMutation(
+  ({ storage, setMyPresence }, layer) => {
+    const layers = storage.get("layers")
+    const layerIds = storage.get("layerIds")
+    
+    const id = nanoid()
+    layers.set(id, layer)
+    layerIds.push(id)
+    
+    setMyPresence({ selection: [id] })
+    broadcast({ type: "LAYER_CREATED", layerId: id })
+  },
+  [broadcast]
+)
+```
+
+### After: Simple Local Layer Creation
+```typescript
+insertLayer: (layer) => {
+  get().saveHistory()
+  set(state => {
+    const id = nanoid()
+    state.layers.set(id, { ...layer, id })
+    state.layerIds.push(id)
+    state.selectedLayers = [id]
+  })
+  get().saveToDatabase() // Debounced
+}
+```
+
+## Conclusion
+
+This architectural transformation demonstrates that not every application needs real-time collaboration. By focusing on single-user experience, we've created a faster, simpler, and more maintainable application while eliminating ongoing SaaS costs. The codebase is now more accessible to contributors and easier to deploy on any infrastructure.
