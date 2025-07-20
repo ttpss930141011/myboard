@@ -6,52 +6,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 BoardWex is a real-time collaborative whiteboard application (Miro clone) built with:
 - **Frontend**: Next.js 14, React 18, TypeScript (strict mode)
-- **Real-time**: Liveblocks (collaboration), Convex (database)
+- **Database**: Prisma with PostgreSQL
 - **Auth**: Clerk (with organizations and invites)
-- **State**: Zustand (UI), Liveblocks (collaborative), Convex (persistent)
+- **State**: Zustand (canvas state and UI state)
 - **Styling**: Tailwind CSS, Shadcn/UI (Radix UI primitives)
+- **Package Manager**: pnpm
 
 ## Development Commands
 
 ```bash
 # Install dependencies
-npm install
-
-# Start Convex backend (required - run in separate terminal)
-npx convex dev
+pnpm install
 
 # Start development server
-npm run dev
+pnpm run dev
 
 # Build for production
-npm run build
+pnpm run build
 
 # Lint code
-npm run lint
+pnpm run lint
 
-# Type checking (no built-in command, use)
-npx tsc --noEmit
+# Type checking
+pnpm exec tsc --noEmit
 ```
 
 ## Architecture
 
 ### State Management Layers
-1. **Liveblocks**: Real-time collaboration (cursors, canvas state, presence)
-2. **Convex**: Persistent data (boards, favorites, search)
-3. **Zustand**: Local UI state (modals, preferences)
+1. **Prisma**: Persistent data (boards, favorites, canvas data)
+2. **Zustand**: Canvas state, UI state (modals, preferences), history (undo/redo)
+3. **React Query**: Server state management and caching
 
 ### Key Design Patterns
-- **Room-based isolation**: Each board is a Liveblocks room
+- **Board isolation**: Each board has its own canvas state
 - **Optimistic updates**: UI updates before server confirmation
-- **Throttled sync**: 16ms throttle for smooth real-time updates
+- **History management**: Undo/redo via Zustand with max 50 entries
 
 ### Canvas Architecture
 The canvas (`app/board/[boardId]/_components/canvas.tsx`) handles:
 - Layer management (max 100 layers)
 - Drawing operations (shapes, freehand, text)
 - Selection and multi-selection
-- Real-time cursor tracking
-- Undo/redo via Liveblocks history
+- Cursor tracking
+- Undo/redo via Zustand history
 
 Canvas modes:
 - `None`: Default state
@@ -61,20 +59,26 @@ Canvas modes:
 - `Translating`: Moving layers
 - `Resizing`: Resizing layers
 
-### Database Schema (Convex)
+### Database Schema (Prisma)
 ```typescript
-boards: {
+Board {
+  id: string
   title: string
+  imageUrl: string
   orgId: string  // Clerk organization ID
   authorId: string
   authorName: string
-  imageUrl: string
+  canvasData: Json  // Canvas state
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
-userFavorites: {
-  orgId: string
+UserFavorite {
+  id: string
   userId: string
-  boardId: id('boards')
+  boardId: string
+  orgId: string
+  createdAt: DateTime
 }
 ```
 
@@ -82,9 +86,9 @@ userFavorites: {
 
 ⚠️ **IMPORTANT**: The following security issues exist in the current codebase:
 
-1. **Authorization Gap**: Convex mutations (`remove`, `update`, `favorite`) only check authentication, not organization membership. Always verify `board.orgId === identity.orgId` before operations.
+1. **Authorization Gap**: API routes (`DELETE`, `PATCH`, `POST /favorite`) only check authentication, not organization membership. Always verify `board.orgId === user.orgId` before operations.
 
-2. **IDOR Vulnerability**: The `get` query in `/convex/board.ts` returns board data without authorization checks.
+2. **IDOR Vulnerability**: API routes return board data without proper authorization checks.
 
 3. **Input Validation**: Board titles need sanitization to prevent XSS.
 
@@ -100,17 +104,15 @@ userFavorites: {
 - TypeScript strict mode enabled
 - Path aliasing: `@/*` maps to root directory
 - Canvas types in `types/canvas.ts` define all layer types and states
-- ⚠️ Avoid `any` types (currently used in `use-api-mutation.ts`)
+- ⚠️ Avoid `any` types
 
 ## Environment Variables Required
 
 ```bash
-CONVEX_DEPLOYMENT=
-NEXT_PUBLIC_CONVEX_URL=
+DATABASE_URL=  # PostgreSQL connection string
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 CLERK_JWT_ISSUER_DOMAIN=
-LIVEBLOCKS_SECRET_KEY=
 ```
 
 ## Common Development Patterns
@@ -122,20 +124,20 @@ LIVEBLOCKS_SECRET_KEY=
 4. Add rendering logic in `layer-preview.tsx`
 5. Add insertion logic in toolbar
 
-### Working with Real-time Features
-- Use `useMutation` from Liveblocks for canvas operations
-- Use Convex mutations for persistent data
-- Presence updates are automatic via Liveblocks
+### Working with Canvas State
+- Use Zustand store for canvas operations
+- Use API routes for persistent data
+- Canvas state is saved to database via API
 
 ### Authentication Flow
 - Clerk middleware protects all routes by default
-- Liveblocks auth happens in `/app/api/liveblocks-auth/route.ts`
 - Organization context provided by Clerk
+- API routes verify auth via Clerk session
 
 ## Known Issues to Address
 
-1. Single-letter variable names in `/lib/utils.ts`
+1. ~~Single-letter variable names in `/lib/utils.ts`~~ (Fixed)
 2. Missing error boundaries
 3. No test infrastructure
-4. Magic numbers without constants (e.g., MAX_LAYERS = 100)
-5. Commented-out code in canvas.tsx (lines 408-410)
+4. ~~Magic numbers without constants~~ (Fixed)
+5. ~~Commented-out code in canvas.tsx~~ (Not found)
