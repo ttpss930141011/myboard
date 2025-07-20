@@ -94,10 +94,20 @@ export const Text = ({
 
   // Auto-resize text to fit container
   useEffect(() => {
-    if (!containerRef.current || !textareaRef.current) return
+    if (!containerRef.current) return
     
-    // Always use textarea for measurement (since it's always present)
-    const measureElement = textareaRef.current
+    // Create a temporary element for measurement
+    const measureElement = document.createElement('div')
+    measureElement.style.cssText = `
+      position: absolute;
+      visibility: hidden;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: ${font.style.fontFamily};
+      text-align: center;
+    `
+    measureElement.textContent = value || editValue || 'Placeholder'
+    containerRef.current.appendChild(measureElement)
     
     // Reset to measure natural size
     measureElement.style.fontSize = '96px'
@@ -117,10 +127,13 @@ export const Text = ({
     )
     
     setFontSize(optimalSize)
+    
+    // Clean up the temporary element
+    containerRef.current.removeChild(measureElement)
   }, [width, height, value, editValue])
 
 
-  const handleDoubleClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+  const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!isEditing) {
       setEditingLayer(id)
@@ -152,7 +165,6 @@ export const Text = ({
       width={width}
       height={height}
       onPointerDown={e => {
-        // Prevent dragging when editing
         if (!isEditing) {
           onPointerDown(e, id)
         }
@@ -160,43 +172,57 @@ export const Text = ({
       style={{
         outline: selectionColor ? `1px solid ${selectionColor}` : 'none',
       }}
+      className=""
     >
       <div 
         ref={containerRef}
         className="h-full w-full flex items-center justify-center p-2 relative overflow-hidden"
       >
-        {/* Always render the textarea for natural cursor positioning */}
-        <textarea
-          ref={textareaRef}
-          value={editValue}
-          onChange={handleTextareaChange}
-          onBlur={handleTextareaBlur}
-          onKeyDown={handleTextareaKeyDown}
-          onDoubleClick={handleDoubleClick}
-          onMouseDown={(e) => {
-            // Prevent dragging when clicking inside textarea during edit mode
-            if (isEditing) {
-              e.stopPropagation()
-            }
-          }}
-          readOnly={!isEditing}
-          className={cn(
-            'resize-none bg-transparent border-none outline-none text-center w-full h-full drop-shadow-md overflow-y-hidden',
-            'focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-transparent',
-            font.className,
-            // Hide cursor and selection when not editing
-            !isEditing && 'cursor-text'
-          )}
-          style={{
-            fontSize: `${fontSize}px`,
-            color: fill ? colorToCss(fill) : '#000',
-            lineHeight: '1.4',
-            padding: 0,
-            margin: 0,
-            // Control caret visibility
-            caretColor: isEditing ? (fill ? colorToCss(fill) : '#000') : 'transparent',
-          }}
-        />
+        {/* Conditionally render textarea or div based on editing state */}
+        {isEditing ? (
+          <textarea
+            ref={textareaRef}
+            value={editValue}
+            onChange={handleTextareaChange}
+            onBlur={handleTextareaBlur}
+            onKeyDown={handleTextareaKeyDown}
+            className={cn(
+              'resize-none bg-transparent border-none outline-none text-center w-full h-full drop-shadow-md overflow-y-hidden',
+              'focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-transparent',
+              font.className
+            )}
+            style={{
+              fontSize: `${fontSize}px`,
+              color: fill ? colorToCss(fill) : '#000',
+              lineHeight: '1.4',
+              padding: 0,
+              margin: 0,
+              caretColor: fill ? colorToCss(fill) : '#000',
+            }}
+            autoFocus
+          />
+        ) : (
+          <div
+            onDoubleClick={handleDoubleClick}
+            className={cn(
+              'text-center w-full h-full flex items-center justify-center overflow-hidden cursor-text drop-shadow-md',
+              font.className
+            )}
+            style={{
+              fontSize: `${fontSize}px`,
+              color: fill ? colorToCss(fill) : '#000',
+              lineHeight: '1.4',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              MozUserSelect: 'none',
+              msUserSelect: 'none',
+              whiteSpace: 'pre-wrap',
+              wordWrap: 'break-word',
+            }}
+          >
+            {value || ''}
+          </div>
+        )}
         
         {/* Placeholder text overlay */}
         {(!value || value === '') && !isEditing && (
