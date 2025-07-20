@@ -46,9 +46,11 @@ export const useSelectionBounds = () => {
   const selection = useCanvasStore(state => state.selectedLayers, shallow)
   const layers = useCanvasStore(state => state.layers)
 
-  return boundingBox(
-    selection
-      .map(id => layers.get(id))
-      .filter((layer): layer is Layer => layer !== undefined)
-  )
+  const selectedLayersData = selection
+    .map(id => layers.get(id))
+    .filter((layer): layer is Layer => layer !== undefined)
+  
+  const bounds = boundingBox(selectedLayersData)
+  
+  return bounds
 }

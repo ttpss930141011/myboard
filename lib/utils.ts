@@ -179,3 +179,12 @@ export const getSvgPathFromStroke = (stroke: number[][]) => {
   pathData.push('Z')
   return pathData.join(' ')
 }
+
+export const isPointInBounds = (point: Point, bounds: XYWH): boolean => {
+  return (
+    point.x >= bounds.x &&
+    point.x <= bounds.x + bounds.width &&
+    point.y >= bounds.y &&
+    point.y <= bounds.y + bounds.height
+  )
+}

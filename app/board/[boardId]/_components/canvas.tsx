@@ -12,11 +12,13 @@ import { SelectionTools } from './selection-tools'
 import { GridBackground } from './grid-background'
 import { CanvasLayers } from './canvas-layers'
 import { useZoom } from '@/hooks/use-zoom'
+import { useThrottledCallback } from '@/hooks/use-throttled-callback'
 
 import {
   colorToCss,
   pointerEventToCanvasPoint,
   resizeBounds,
+  isPointInBounds,
 } from '@/lib/utils'
 import {
   Camera,
@@ -32,6 +34,7 @@ import {
 import { useDisableScrollBounce } from '@/hooks/use-disable-scroll-bounce'
 import { useCanvasStore, useCanvasHistory } from '@/stores/canvas-store'
 import { useCanvas } from '@/hooks/api/use-canvas'
+import { useSelectionBounds } from '@/hooks/use-selection-bounds-new'
 import { Loading } from './loading'
 
 const MAX_LAYERS = 100
@@ -94,6 +97,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
   } = useCanvasStore()
   
   const { undo, redo, canUndo, canRedo } = useCanvasHistory()
+  const selectionBounds = useSelectionBounds()
   
   const [lastUsedColor, setLastUsedColor] = useState<Color>({
     r: 0,
@@ -186,6 +190,12 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       selectLayers(ids)
     },
     [findIntersectingLayersWithRectangle, layerIds, selectLayers, setCanvasState]
+  )
+
+  // Throttled version for better performance during selection
+  const updateSelectionNetThrottled = useThrottledCallback(
+    updateSelectionNet,
+    16 // ~60fps
   )
 
   const startDrawing = useCallback(
@@ -328,7 +338,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       if (canvasState.mode === CanvasMode.Pressing) {
         startMultiSelection(current, canvasState.origin)
       } else if (canvasState.mode === CanvasMode.SelectionNet) {
-        updateSelectionNet(current, canvasState.origin)
+        updateSelectionNetThrottled(current, canvasState.origin)
       } else if (canvasState.mode === CanvasMode.Translating) {
         translateSelectedLayers(current)
       } else if (canvasState.mode === CanvasMode.Resizing) {
@@ -350,9 +360,17 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         // Check if movement exceeds threshold
         const distance = Math.abs(current.x - canvasState.origin.x) + Math.abs(current.y - canvasState.origin.y)
         if (distance > 5) {
-          // Start actual dragging - specify which layer(s) to move
+          // Start actual dragging
           saveHistory()
-          if (canvasState.wasSelected) {
+          
+          if (canvasState.layerId === '') {
+            // Dragging selection bounds - move all selected layers
+            setCanvasState({ 
+              mode: CanvasMode.Translating, 
+              current,
+              layerIds: selectedLayers
+            })
+          } else if (canvasState.wasSelected) {
             // If layer was already selected, drag all selected layers
             setCanvasState({ mode: CanvasMode.Translating, current })
           } else {
@@ -372,12 +390,12 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       resizeSelectedLayer,
       translateSelectedLayers,
       continueDrawingHandler,
-      updateSelectionNet,
+      updateSelectionNetThrottled,
       startMultiSelection,
-      selectLayers,
       saveHistory,
       setCanvasState,
       setThrottledCamera,
+      selectedLayers,
     ]
   )
 
@@ -409,9 +427,21 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         return
       }
 
+      // Check if we're clicking within the selection bounds
+      if (selectionBounds && selectedLayers.length > 0 && isPointInBounds(point, selectionBounds)) {
+        // Enter PotentialDrag mode for selection bounds
+        setCanvasState({ 
+          mode: CanvasMode.PotentialDrag, 
+          layerId: '', // Empty string to indicate selection bounds drag
+          origin: point,
+          wasSelected: true
+        })
+        return
+      }
+
       setCanvasState({ origin: point, mode: CanvasMode.Pressing })
     },
-    [camera, canvasState.mode, setCanvasState, startDrawing]
+    [camera, canvasState.mode, setCanvasState, startDrawing, selectionBounds, selectedLayers]
   )
 
   const onPointerUp = useCallback(
@@ -429,6 +459,10 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         setCanvasState({
           mode: CanvasMode.None,
         })
+      } else if (canvasState.mode === CanvasMode.SelectionNet) {
+        setCanvasState({
+          mode: CanvasMode.None,
+        })
       } else if (canvasState.mode === CanvasMode.Pencil) {
         insertPathHandler()
       } else if (canvasState.mode === CanvasMode.Panning) {
@@ -437,21 +471,38 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         })
       } else if (canvasState.mode === CanvasMode.Inserting) {
         insertLayerWithPosition(canvasState.layerType, point)
-      } else if (canvasState.mode === CanvasMode.PotentialDrag) {
-        // This was a click, not a drag
-        const layer = getLayer(canvasState.layerId)
-        
-        if (!canvasState.wasSelected) {
-          // Select the layer if it wasn't selected
-          selectLayers([canvasState.layerId])
-        } else if (layer && (layer.type === LayerType.Text || layer.type === LayerType.Note)) {
-          // Enter edit mode if clicking on already selected text/note
-          setEditingLayer(canvasState.layerId)
-        }
-        
+      } else if (canvasState.mode === CanvasMode.Translating) {
+        // End translation mode
         setCanvasState({
           mode: CanvasMode.None,
         })
+      } else if (canvasState.mode === CanvasMode.Resizing) {
+        // End resizing mode
+        setCanvasState({
+          mode: CanvasMode.None,
+        })
+      } else if (canvasState.mode === CanvasMode.PotentialDrag) {
+        // This was a click, not a drag
+        if (canvasState.layerId === '') {
+          // Clicked on selection bounds but didn't drag - just maintain selection
+          setCanvasState({
+            mode: CanvasMode.None,
+          })
+        } else {
+          const layer = getLayer(canvasState.layerId)
+          
+          if (!canvasState.wasSelected) {
+            // Select the layer if it wasn't selected
+            selectLayers([canvasState.layerId])
+          } else if (layer && (layer.type === LayerType.Text || layer.type === LayerType.Note)) {
+            // Enter edit mode if clicking on already selected text/note
+            setEditingLayer(canvasState.layerId)
+          }
+          
+          setCanvasState({
+            mode: CanvasMode.None,
+          })
+        }
       } else {
         setCanvasState({
           mode: CanvasMode.None,
@@ -582,7 +633,13 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             ? 'grabbing' 
             : canvasState.mode === CanvasMode.Pencil 
               ? 'crosshair'
-              : 'default'
+              : canvasState.mode === CanvasMode.Translating
+                ? 'move'
+                : canvasState.mode === CanvasMode.SelectionNet
+                  ? 'crosshair'
+                  : canvasState.mode === CanvasMode.Resizing
+                    ? 'nwse-resize'
+                    : 'default'
         }}
         onPointerMove={onPointerMove}
         onPointerLeave={onPointerLeave}
