@@ -3,10 +3,10 @@ import GoogleProvider from "next-auth/providers/google"
 import GitHubProvider from "next-auth/providers/github"
 
 /**
- * Auth configuration following SOLID principles
- * Single Responsibility: Only handles auth configuration
+ * Base auth configuration for Edge Runtime (middleware)
+ * Uses JWT strategy to avoid database access
  */
-export const authConfig: NextAuthConfig = {
+export const authConfigBase: NextAuthConfig = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -24,6 +24,39 @@ export const authConfig: NextAuthConfig = {
     error: "/auth/error",
   },
   callbacks: {
+    async jwt({ token, user, account }) {
+      // Initial sign in
+      if (account && user) {
+        return {
+          ...token,
+          userId: user.id,
+          accessToken: account.access_token,
+        }
+      }
+      return token
+    },
+    async session({ session, token }) {
+      if (session.user && token.userId) {
+        session.user.id = token.userId as string
+      }
+      return session
+    },
+  },
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+}
+
+/**
+ * Full auth configuration for API routes
+ * Uses database strategy with PrismaAdapter
+ */
+export const authConfig: NextAuthConfig = {
+  providers: authConfigBase.providers,
+  pages: authConfigBase.pages,
+  callbacks: {
     async session({ session, user }) {
       if (session.user && user) {
         session.user.id = user.id
@@ -35,4 +68,5 @@ export const authConfig: NextAuthConfig = {
     strategy: "database",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  secret: process.env.NEXTAUTH_SECRET,
 }
