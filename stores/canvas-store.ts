@@ -47,6 +47,9 @@ interface CanvasStore {
   penColor: Color
   pencilDraft: number[][] | null
   
+  // Editing state
+  editingLayerId: string | null
+  
   // Layer operations
   insertLayer: (layer: Omit<Layer, 'id'>) => void
   updateLayer: (id: string, updates: Partial<Layer>) => void
@@ -82,6 +85,10 @@ interface CanvasStore {
   undo: () => void
   redo: () => void
   saveHistory: () => void
+  
+  // Editing operations
+  setEditingLayer: (id: string | null) => void
+  startEditingWithChar: (id: string, char: string) => void
   
   // Utilities
   getLayer: (id: string) => Layer | undefined
@@ -125,6 +132,7 @@ export const useCanvasStore = create<CanvasStore>()(
       canvasState: { mode: CanvasMode.None },
       penColor: { r: 0, g: 0, b: 0 },
       pencilDraft: null,
+      editingLayerId: null,
       
       insertLayer: (layer) => {
         get().saveHistory()
@@ -374,6 +382,26 @@ export const useCanvasStore = create<CanvasStore>()(
         state.layers = new Map(nextState.layers)
         state.layerIds = nextState.layerIds
       }),
+      
+      setEditingLayer: (id) => set(state => {
+        state.editingLayerId = id
+      }),
+      
+      startEditingWithChar: (id, char) => {
+        get().saveHistory()
+        set(state => {
+          state.editingLayerId = id
+          // 直接更新層的值為初始字符
+          const layer = state.layers.get(id)
+          if (layer && ('value' in layer)) {
+            state.layers.set(id, {
+              ...layer,
+              value: char
+            })
+          }
+        })
+        get().saveToDatabase()
+      },
       
       getLayer: (id) => get().layers.get(id),
       

@@ -1,5 +1,5 @@
 import { Kalam } from 'next/font/google'
-import ContentEditable, { ContentEditableEvent } from 'react-contenteditable'
+import { useEffect, useRef, useState } from 'react'
 
 import { NoteLayer } from '@/types/canvas'
 import { cn, colorToCss, getContrastingTextColor } from '@/lib/utils'
@@ -7,41 +7,61 @@ import { useCanvasStore } from '@/stores/canvas-store'
 
 const font = Kalam({ subsets: ['latin'], weight: ['400'] })
 
-const calculateFontSize = (width: number, height: number, textLength: number) => {
-  const maxFontSize = 96
-  const minFontSize = 10
+// Binary search algorithm to find optimal font size
+const findOptimalFontSize = (
+  element: HTMLElement,
+  containerWidth: number,
+  containerHeight: number,
+  minSize: number = 10,
+  maxSize: number = 96
+): number => {
+  let low = minSize
+  let high = maxSize
+  let bestSize = minSize
   
-  // Calculate area available for text (accounting for padding)
-  const effectiveWidth = width - 24 // 12px padding on each side
-  const effectiveHeight = height - 24
-  const area = effectiveWidth * effectiveHeight
+  // Save original styles
+  const originalWhiteSpace = element.style.whiteSpace
+  const originalWordWrap = element.style.wordWrap
   
-  // Calculate characters per line (approximate)
-  const avgCharWidth = 0.6 // Average character width ratio
-  const charsPerLine = Math.floor(effectiveWidth / (maxFontSize * avgCharWidth))
+  // Ensure text wrapping is enabled for measurement
+  element.style.whiteSpace = 'pre-wrap'
+  element.style.wordWrap = 'break-word'
   
-  // Estimate number of lines needed
-  const estimatedLines = Math.ceil(textLength / charsPerLine)
-  
-  // Calculate font size based on available height and number of lines
-  let fontSize = Math.min(effectiveHeight / (estimatedLines * 1.4), maxFontSize)
-  
-  // Adjust font size based on text length
-  if (textLength === 0) {
-    fontSize = maxFontSize * 0.6
-  } else if (textLength < 20) {
-    fontSize = Math.min(maxFontSize * 0.8, fontSize)
-  } else if (textLength < 50) {
-    fontSize = Math.min(maxFontSize * 0.6, fontSize)
-  } else if (textLength < 100) {
-    fontSize = Math.min(maxFontSize * 0.4, fontSize)
-  } else {
-    // For longer text, scale down more aggressively
-    const scaleFactor = Math.max(0.15, 1 - (textLength / 500))
-    fontSize = Math.min(fontSize, maxFontSize * scaleFactor)
+  // Binary search with 0.5px precision
+  while (high - low > 0.5) {
+    const mid = (low + high) / 2
+    element.style.fontSize = `${mid}px`
+    
+    // Force reflow to get accurate measurements
+    element.offsetHeight
+    
+    const isOverflowing = 
+      element.scrollHeight > containerHeight || 
+      element.scrollWidth > containerWidth
+    
+    if (isOverflowing) {
+      high = mid
+    } else {
+      bestSize = mid
+      low = mid
+    }
   }
   
-  return Math.max(fontSize, minFontSize)
+  // Final check to ensure no overflow
+  element.style.fontSize = `${bestSize}px`
+  element.offsetHeight // Force reflow
+  
+  while ((element.scrollHeight > containerHeight || element.scrollWidth > containerWidth) && bestSize > minSize) {
+    bestSize -= 0.5
+    element.style.fontSize = `${bestSize}px`
+    element.offsetHeight // Force reflow
+  }
+  
+  // Restore original styles
+  element.style.whiteSpace = originalWhiteSpace
+  element.style.wordWrap = originalWordWrap
+  
+  return bestSize
 }
 
 interface NoteProps {
@@ -59,25 +79,80 @@ export const Note = ({
 }: NoteProps) => {
   const { x, y, width, height, fill, value } = layer
   const updateLayer = useCanvasStore(state => state.updateLayer)
+  const editingLayerId = useCanvasStore(state => state.editingLayerId)
+  const setEditingLayer = useCanvasStore(state => state.setEditingLayer)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [fontSize, setFontSize] = useState(24)
+  const isEditing = editingLayerId === id
+  const [editValue, setEditValue] = useState(value || '')
 
-  const handleContentChange = (e: ContentEditableEvent) => {
-    updateLayer(id, { value: e.target.value })
+  // Update edit value when layer value changes
+  useEffect(() => {
+    setEditValue(value || '')
+  }, [value])
+
+  // Auto-resize text to fit container
+  useEffect(() => {
+    if (!containerRef.current || !textareaRef.current) return
+    
+    // Always use textarea for measurement (since it's always present)
+    const measureElement = textareaRef.current
+    
+    // Reset to measure natural size
+    measureElement.style.fontSize = '96px'
+    
+    // Calculate available space (with padding)
+    const padding = 32 // 16px on each side for better spacing
+    const availableWidth = width - padding
+    const availableHeight = height - padding
+    
+    // Find optimal font size using binary search
+    const optimalSize = findOptimalFontSize(
+      measureElement,
+      availableWidth,
+      availableHeight,
+      10,
+      96
+    )
+    
+    setFontSize(optimalSize)
+  }, [width, height, value, editValue])
+
+  // Handle keyboard-triggered editing
+  useEffect(() => {
+    if (isEditing && textareaRef.current && editValue.length === 1 && value && value.length > 1) {
+      // This was triggered by keyboard input that replaced all text
+      // Place cursor after the typed character
+      textareaRef.current.setSelectionRange(1, 1)
+    }
+  }, [isEditing, editValue, value])
+
+  const handleDoubleClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    e.stopPropagation()
+    if (!isEditing) {
+      setEditingLayer(id)
+    }
+    // Select all text on double-click
+    e.currentTarget.select()
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setEditValue(e.target.value)
+  }
+
+  const handleTextareaBlur = () => {
+    setEditingLayer(null)
+    updateLayer(id, { value: editValue })
+  }
+
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Escape') {
-      // Escape: Exit editing mode
       e.preventDefault()
-      ;(e.target as HTMLElement).blur()
+      setEditingLayer(null)
+      setEditValue(value || '')
     }
     // Let Enter key work naturally for line breaks
-  }
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    // Prevent pasting HTML, only paste plain text
-    e.preventDefault()
-    const text = e.clipboardData.getData('text/plain')
-    document.execCommand('insertText', false, text)
   }
 
   return (
@@ -86,33 +161,77 @@ export const Note = ({
       y={y}
       width={width}
       height={height}
-      onPointerDown={e => onPointerDown(e, id)}
+      onPointerDown={e => {
+        // Prevent dragging when editing
+        if (!isEditing) {
+          onPointerDown(e, id)
+        }
+      }}
       style={{
         outline: selectionColor ? `1px solid ${selectionColor}` : 'none',
         backgroundColor: fill ? colorToCss(fill) : '#000',
       }}
       className="shadow-md drop-shadow-xl"
     >
-      <div className="h-full w-full flex items-center justify-center p-3">
-        <ContentEditable
-          html={value || 'Text'}
-          onChange={handleContentChange}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
+      <div 
+        ref={containerRef} 
+        className="h-full w-full flex items-center justify-center p-4 relative overflow-hidden"
+      >
+        {/* Always render the textarea for natural cursor positioning */}
+        <textarea
+          ref={textareaRef}
+          value={editValue}
+          onChange={handleTextareaChange}
+          onBlur={handleTextareaBlur}
+          onKeyDown={handleTextareaKeyDown}
+          onDoubleClick={handleDoubleClick}
+          onFocus={() => {
+            // Enter edit mode when textarea gets focus from click
+            if (!isEditing && selectionColor) {
+              setEditingLayer(id)
+            }
+          }}
+          onMouseDown={(e) => {
+            // Prevent dragging when clicking inside textarea during edit mode
+            if (isEditing) {
+              e.stopPropagation()
+            }
+          }}
+          readOnly={!isEditing}
           className={cn(
-            'text-center outline-none',
-            font.className
+            'resize-none bg-transparent border-none outline-none text-center w-full h-full overflow-y-hidden',
+            'focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-transparent',
+            font.className,
+            // Hide cursor and selection when not editing
+            !isEditing && 'cursor-text'
           )}
           style={{
-            fontSize: calculateFontSize(width, height, value?.replace(/<[^>]*>/g, '').length || 4),
+            fontSize: `${fontSize}px`,
             color: fill ? getContrastingTextColor(fill) : '#000',
-            wordWrap: 'break-word',
-            overflowWrap: 'break-word',
-            whiteSpace: 'pre-wrap',
             lineHeight: '1.4',
-            minHeight: '1em',
+            padding: 0,
+            margin: 0,
+            // Control caret visibility
+            caretColor: isEditing ? (fill ? getContrastingTextColor(fill) : '#000') : 'transparent',
           }}
         />
+        
+        {/* Placeholder text overlay */}
+        {(!value || value === '') && !isEditing && (
+          <div 
+            className={cn(
+              'absolute inset-0 flex items-center justify-center pointer-events-none opacity-50 p-4',
+              font.className
+            )}
+            style={{
+              fontSize: `${Math.min(fontSize, 24)}px`,
+              color: fill ? getContrastingTextColor(fill) : '#000',
+            }}
+          >
+            Double-click to edit
+          </div>
+        )}
+        
       </div>
     </foreignObject>
   )
