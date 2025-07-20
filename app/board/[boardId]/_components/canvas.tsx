@@ -360,17 +360,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         // Check if movement exceeds threshold
         const distance = Math.abs(current.x - canvasState.origin.x) + Math.abs(current.y - canvasState.origin.y)
         if (distance > 5) {
-          // Start actual dragging
+          // Start actual dragging - specify which layer(s) to move
           saveHistory()
-          
-          if (canvasState.layerId === '') {
-            // Dragging selection bounds - move all selected layers
-            setCanvasState({ 
-              mode: CanvasMode.Translating, 
-              current,
-              layerIds: selectedLayers
-            })
-          } else if (canvasState.wasSelected) {
+          if (canvasState.wasSelected) {
             // If layer was already selected, drag all selected layers
             setCanvasState({ mode: CanvasMode.Translating, current })
           } else {
@@ -392,10 +384,10 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       continueDrawingHandler,
       updateSelectionNetThrottled,
       startMultiSelection,
+      selectLayers,
       saveHistory,
       setCanvasState,
       setThrottledCamera,
-      selectedLayers,
     ]
   )
 
@@ -429,19 +421,20 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
       // Check if we're clicking within the selection bounds
       if (selectionBounds && selectedLayers.length > 0 && isPointInBounds(point, selectionBounds)) {
-        // Enter PotentialDrag mode for selection bounds
+        // Save history before starting to drag
+        saveHistory()
+        // Start translating mode for all selected layers
         setCanvasState({ 
-          mode: CanvasMode.PotentialDrag, 
-          layerId: '', // Empty string to indicate selection bounds drag
-          origin: point,
-          wasSelected: true
+          mode: CanvasMode.Translating, 
+          current: point,
+          layerIds: selectedLayers // Explicitly set which layers to move
         })
         return
       }
 
       setCanvasState({ origin: point, mode: CanvasMode.Pressing })
     },
-    [camera, canvasState.mode, setCanvasState, startDrawing, selectionBounds, selectedLayers]
+    [camera, canvasState.mode, setCanvasState, startDrawing, selectionBounds, selectedLayers, saveHistory]
   )
 
   const onPointerUp = useCallback(
@@ -483,26 +476,19 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         })
       } else if (canvasState.mode === CanvasMode.PotentialDrag) {
         // This was a click, not a drag
-        if (canvasState.layerId === '') {
-          // Clicked on selection bounds but didn't drag - just maintain selection
-          setCanvasState({
-            mode: CanvasMode.None,
-          })
-        } else {
-          const layer = getLayer(canvasState.layerId)
-          
-          if (!canvasState.wasSelected) {
-            // Select the layer if it wasn't selected
-            selectLayers([canvasState.layerId])
-          } else if (layer && (layer.type === LayerType.Text || layer.type === LayerType.Note)) {
-            // Enter edit mode if clicking on already selected text/note
-            setEditingLayer(canvasState.layerId)
-          }
-          
-          setCanvasState({
-            mode: CanvasMode.None,
-          })
+        const layer = getLayer(canvasState.layerId)
+        
+        if (!canvasState.wasSelected) {
+          // Select the layer if it wasn't selected
+          selectLayers([canvasState.layerId])
+        } else if (layer && (layer.type === LayerType.Text || layer.type === LayerType.Note)) {
+          // Enter edit mode if clicking on already selected text/note
+          setEditingLayer(canvasState.layerId)
         }
+        
+        setCanvasState({
+          mode: CanvasMode.None,
+        })
       } else {
         setCanvasState({
           mode: CanvasMode.None,
@@ -645,6 +631,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         onPointerLeave={onPointerLeave}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
+        onDragStart={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
       >
         <GridBackground
