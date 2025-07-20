@@ -280,6 +280,8 @@ export const useCanvasStore = create<CanvasStore>()(
       
       insertPath: () => {
         const pencilDraft = get().pencilDraft
+        const currentPenColor = get().penColor  // 在 set 之前獲取當前顏色
+        
         if (!pencilDraft || pencilDraft.length < 2) {
           set(state => {
             state.pencilDraft = null
@@ -290,7 +292,7 @@ export const useCanvasStore = create<CanvasStore>()(
         get().saveHistory()
         set(state => {
           const id = nanoid()
-          const layer = penPointsToPathLayer(pencilDraft, get().penColor)
+          const layer = penPointsToPathLayer(pencilDraft, currentPenColor)
           
           state.layers.set(id, layer)
           state.layerIds.push(id)
