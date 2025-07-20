@@ -13,6 +13,7 @@ import { GridBackground } from './grid-background'
 import { CanvasLayers } from './canvas-layers'
 import { useZoom } from '@/hooks/use-zoom'
 import { useThrottledCallback } from '@/hooks/use-throttled-callback'
+import { useCanvasSafety } from '@/hooks/use-canvas-safety'
 
 import {
   colorToCss,
@@ -106,6 +107,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
   })
 
   useDisableScrollBounce()
+  
+  // Add defensive programming for pointer events
+  useCanvasSafety(canvasState, setCanvasState)
 
   const insertLayerWithPosition = useCallback(
     (
@@ -384,7 +388,6 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       continueDrawingHandler,
       updateSelectionNetThrottled,
       startMultiSelection,
-      selectLayers,
       saveHistory,
       setCanvasState,
       setThrottledCamera,
