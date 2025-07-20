@@ -8,6 +8,11 @@ const ZOOM_STEP = 1.2
 /**
  * Hook for managing zoom functionality
  * Follows Single Responsibility Principle - only handles zoom logic
+ * 
+ * @remarks
+ * - calculateZoomAtPoint: Internal function for zoom calculations at a specific point
+ * - zoomIn/zoomOut: Public functions that optionally zoom at a specific point
+ * - When no center is provided, zoom happens without changing camera position
  */
 export const useZoom = () => {
   const calculateZoomAtPoint = useCallback(

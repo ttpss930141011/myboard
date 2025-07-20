@@ -25,15 +25,57 @@ export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs))
 export const connectionIdToColor = (connectionId: number): string =>
   COLORS[connectionId % COLORS.length]
 
+/**
+ * Convert screen coordinates to canvas coordinates considering camera transform
+ */
+export const screenToCanvas = (
+  screenX: number,
+  screenY: number,
+  camera: Camera
+): Point => {
+  const zoom = camera.zoom ?? 1
+  return {
+    x: Math.round((screenX - camera.x) / zoom),
+    y: Math.round((screenY - camera.y) / zoom),
+  }
+}
+
+/**
+ * Convert canvas coordinates to screen coordinates
+ */
+export const canvasToScreen = (
+  canvasX: number,
+  canvasY: number,
+  camera: Camera
+): Point => {
+  const zoom = camera.zoom ?? 1
+  return {
+    x: Math.round(canvasX * zoom + camera.x),
+    y: Math.round(canvasY * zoom + camera.y),
+  }
+}
+
+/**
+ * Convert pointer event to canvas coordinates
+ */
 export const pointerEventToCanvasPoint = (
   e: React.PointerEvent,
   camera: Camera
-) => {
-  // Support zoom with backward compatibility
-  const zoom = camera.zoom ?? 1
+): Point => {
+  return screenToCanvas(e.clientX, e.clientY, camera)
+}
+
+/**
+ * Get mouse position relative to an element
+ */
+export const getRelativePointerPosition = (
+  e: React.PointerEvent | MouseEvent,
+  element: Element
+): Point => {
+  const rect = element.getBoundingClientRect()
   return {
-    x: Math.round((e.clientX - camera.x) / zoom),
-    y: Math.round((e.clientY - camera.y) / zoom),
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top
   }
 }
 

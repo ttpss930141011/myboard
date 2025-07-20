@@ -79,6 +79,7 @@ export const Text = ({
 }: TextProps) => {
   const { x, y, width, height, fill, value } = layer
   const updateLayer = useCanvasStore(state => state.updateLayer)
+  const deleteLayer = useCanvasStore(state => state.deleteLayer)
   const editingLayerId = useCanvasStore(state => state.editingLayerId)
   const setEditingLayer = useCanvasStore(state => state.setEditingLayer)
   const isEditing = editingLayerId === id
@@ -151,7 +152,6 @@ export const Text = ({
     const trimmedValue = editValue.trim()
     if (trimmedValue === '') {
       // Use deleteLayer from store to handle deletion properly (with history)
-      const deleteLayer = useCanvasStore.getState().deleteLayer
       deleteLayer(id)
     } else {
       updateLayer(id, { value: editValue })
@@ -166,7 +166,6 @@ export const Text = ({
       // Also check for empty text when escaping
       const originalValue = value || ''
       if (originalValue.trim() === '') {
-        const deleteLayer = useCanvasStore.getState().deleteLayer
         deleteLayer(id)
       } else {
         setEditValue(originalValue)
