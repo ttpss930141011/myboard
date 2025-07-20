@@ -10,7 +10,7 @@ import { Path } from './path'
 
 import { colorToCss } from '@/lib/utils'
 import { LayerType } from '@/types/canvas'
-import { useStorage } from '@/liveblocks.config'
+import { useCanvasStore } from '@/stores/canvas-store'
 
 interface LayerPreviewProps {
   id: string
@@ -20,7 +20,7 @@ interface LayerPreviewProps {
 
 export const LayerPreview = memo(
   ({ id, onLayerPointerDown, selectionColor }: LayerPreviewProps) => {
-    const layer = useStorage(root => root.layers.get(id))
+    const layer = useCanvasStore(state => state.layers.get(id))
 
     if (!layer) return null
 
