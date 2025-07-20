@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Link2, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DropdownMenuContentProps } from '@radix-ui/react-dropdown-menu'
@@ -33,10 +34,18 @@ export const Actions = ({
 }: ActionsProps) => {
   const { onOpen } = useRenameModal()
   const deleteBoard = useDeleteBoard(id)
+  const [origin, setOrigin] = useState("")
+  
+  useEffect(() => {
+    // Only access window on client side
+    setOrigin(window.location.origin)
+  }, [])
 
   const onCopyLink = () => {
+    if (!origin) return
+    
     navigator.clipboard
-      .writeText(`${window.location.origin}/board/${id}`)
+      .writeText(`${origin}/board/${id}`)
       .then(() => toast.success('Link copied'))
       .catch(() => toast.error('Failed to copy link'))
   }

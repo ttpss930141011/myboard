@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -26,8 +26,14 @@ interface ShareButtonProps {
 export function ShareButton({ boardId, isPublic, shareId, onTogglePublic }: ShareButtonProps) {
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [origin, setOrigin] = useState("")
   
-  const shareUrl = shareId ? `${window.location.origin}/board/share/${shareId}` : ""
+  useEffect(() => {
+    // Only access window on client side
+    setOrigin(window.location.origin)
+  }, [])
+  
+  const shareUrl = shareId && origin ? `${origin}/board/share/${shareId}` : ""
   
   const handleToggle = async (checked: boolean) => {
     setLoading(true)
