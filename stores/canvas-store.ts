@@ -129,7 +129,7 @@ export const useCanvasStore = create<CanvasStore>()(
       layers: new Map(),
       layerIds: [],
       history: { past: [], future: [] },
-      camera: { x: 0, y: 0 },
+      camera: { x: 0, y: 0, zoom: 1 },
       selectedLayers: [],
       canvasState: { mode: CanvasMode.None },
       penColor: { r: 0, g: 0, b: 0 },

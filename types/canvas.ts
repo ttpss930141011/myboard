@@ -7,6 +7,7 @@ export type Color = {
 export type Camera = {
   x: number
   y: number
+  zoom?: number // Optional for backward compatibility
 }
 
 export enum LayerType {
@@ -127,6 +128,11 @@ export type CanvasState =
       origin: Point
       wasSelected: boolean
     }
+  | {
+      mode: CanvasMode.Panning
+      origin: Point
+      startCamera: Camera
+    }
 
 export enum CanvasMode {
   None,
@@ -137,6 +143,7 @@ export enum CanvasMode {
   Resizing,
   Pencil,
   PotentialDrag,
+  Panning,
 }
 
 export type Layer =
