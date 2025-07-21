@@ -4,6 +4,10 @@ Welcome to the documentation for Personal Miro - a single-user whiteboard applic
 
 ## Documentation Structure
 
+### 🔐 Authentication
+- [Auth.js Setup Guide](./AUTHJS_SETUP_GUIDE.md) - Complete setup instructions for Auth.js v5
+- [Clerk to Auth.js Migration](./CLERK_TO_AUTHJS_MIGRATION.md) - Migration guide from Clerk to Auth.js
+
 ### 📐 Architecture
 - [Architecture Changes](./architecture/ARCHITECTURE_CHANGES.md) - Major refactoring from collaborative to personal whiteboard
 
@@ -31,5 +35,5 @@ Welcome to the documentation for Personal Miro - a single-user whiteboard applic
 - **Frontend**: Next.js 14, React 18, TypeScript
 - **State Management**: Zustand with Immer
 - **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: Clerk (to be removed in Phase 2)
+- **Authentication**: Auth.js v5 (NextAuth) with OAuth providers
 - **Styling**: Tailwind CSS, Shadcn/UI

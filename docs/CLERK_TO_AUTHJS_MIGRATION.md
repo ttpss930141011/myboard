@@ -169,6 +169,12 @@ However, this migration has been thoroughly tested and is considered stable.
 3. **Email Authentication** - Could add magic link authentication
 4. **2FA** - Could implement two-factor authentication
 
+## Related Documentation
+
+- [Auth.js Setup Guide](./AUTHJS_SETUP_GUIDE.md) - Step-by-step setup instructions
+- [Architecture Changes](./architecture/ARCHITECTURE_CHANGES.md) - Overall architecture transformation
+- [Main README](../README.md) - Project overview and quick start
+
 ## References
 
 - [Auth.js Documentation](https://authjs.dev/)

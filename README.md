@@ -7,6 +7,7 @@ Originally forked from [aftabrehan/board-wex](https://github.com/aftabrehan/boar
 ## 🎯 Why This Fork?
 
 The original project relied heavily on paid SaaS services:
+- **Clerk** - Authentication service ($74/month)
 - **Liveblocks** - Real-time collaboration service (usage-based pricing)
 - **Convex** - Backend-as-a-Service platform (usage-based pricing)
 
@@ -124,18 +125,6 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to see your application.
-
-## 📝 Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `DATABASE_URL` | PostgreSQL connection string | ✅ |
-| `NEXTAUTH_URL` | The URL of your application (e.g., http://localhost:3000) | ✅ |
-| `NEXTAUTH_SECRET` | Secret key for JWT encryption (generate with `openssl rand -base64 32`) | ✅ |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID | ⚠️ At least one OAuth provider required |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | ⚠️ |
-| `GITHUB_ID` | GitHub OAuth app ID | ⚠️ At least one OAuth provider required |
-| `GITHUB_SECRET` | GitHub OAuth app secret | ⚠️ |
 
 ## 🔐 Authentication Setup
 
