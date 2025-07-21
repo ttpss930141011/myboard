@@ -48,7 +48,7 @@ interface CanvasProps {
 export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
   const { isLoading } = useCanvas(boardId)
   const svgRef = useRef<SVGSVGElement>(null)
-  const rafRef = useRef<number>()
+  const rafRef = useRef<number>(0)
   const { zoomIn, zoomOut, resetZoom } = useZoom()
   
   // Track window dimensions for grid background
