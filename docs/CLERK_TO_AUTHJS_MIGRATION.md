@@ -1,6 +1,6 @@
 # Clerk to Auth.js Migration Guide
 
-This document details the complete migration from Clerk authentication to Auth.js v5 (NextAuth) in the Personal Miro project.
+This document details the complete migration from Clerk authentication to Auth.js v5 (NextAuth) in the MyBoard project.
 
 ## Migration Overview
 
@@ -179,4 +179,4 @@ However, this migration has been thoroughly tested and is considered stable.
 
 - [Auth.js Documentation](https://authjs.dev/)
 - [Edge Compatibility Guide](https://authjs.dev/guides/edge-compatibility)
-- [PR #6 - Remove Clerk and implement Auth.js v5](https://github.com/ttpss930141011/personal-miro/pull/6)
+- [PR #6 - Remove Clerk and implement Auth.js v5](https://github.com/ttpss930141011/myboard/pull/6)

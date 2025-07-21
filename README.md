@@ -1,8 +1,8 @@
-# Personal Miro - Online Whiteboard & Drawing Tool
+# MyBoard - Personal Whiteboard & Drawing Tool
 
 **A single-user Miro clone whiteboard app with local state management using Zustand and PostgreSQL persistence - no real-time collaboration, no Liveblocks/Convex dependencies, just pure personal drawing and creativity.**
 
-Originally forked from [aftabrehan/board-wex](https://github.com/aftabrehan/board-wex), this project has been completely refactored to remove expensive SaaS dependencies (Liveblocks & Convex) and transformed into a self-hostable personal whiteboard solution.
+Originally forked from [aftabrehan/board-wex](https://github.com/aftabrehan/board-wex), this project has been completely refactored and renamed to MyBoard. It removes expensive SaaS dependencies (Liveblocks & Convex) and has been transformed into a self-hostable personal whiteboard solution.
 
 ## 🎯 Why This Fork?
 
@@ -69,8 +69,8 @@ This fork removes these dependencies to create a **completely free and self-host
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/ttpss930141011/personal-miro.git
-cd personal-miro
+git clone https://github.com/ttpss930141011/myboard.git
+cd myboard
 ```
 
 ### 2. Install dependencies
@@ -87,7 +87,7 @@ Create a `.env` file in the root directory:
 
 ```env
 # Database
-DATABASE_URL="postgresql://user:password@localhost:5432/personal_miro"
+DATABASE_URL="postgresql://user:password@localhost:5432/myboard"
 
 # Auth.js Configuration
 NEXTAUTH_URL=http://localhost:3000
@@ -179,7 +179,7 @@ For production deployment, update the redirect URIs to your production domain:
 ## 🏗️ Project Structure
 
 ```
-personal-miro/
+myboard/
 ├── app/                    # Next.js app router pages
 │   ├── (auth)/            # Authentication pages
 │   ├── (dashboard)/       # Main application pages

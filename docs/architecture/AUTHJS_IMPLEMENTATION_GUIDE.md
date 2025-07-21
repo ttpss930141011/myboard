@@ -1,6 +1,6 @@
-# Auth.js Implementation Guide for Personal Miro
+# Auth.js Implementation Guide for MyBoard
 
-This guide provides step-by-step instructions for implementing Auth.js v5 in the Personal Miro project, replacing Clerk.
+This guide provides step-by-step instructions for implementing Auth.js v5 in the MyBoard project, replacing Clerk.
 
 ## Step 1: Install Dependencies
 
@@ -247,7 +247,7 @@ export default function SignInPage() {
     <div className="min-h-screen flex items-center justify-center">
       <Card className="w-[400px]">
         <CardHeader>
-          <CardTitle>Sign in to Personal Miro</CardTitle>
+          <CardTitle>Sign in to MyBoard</CardTitle>
           <CardDescription>
             Choose your preferred sign-in method
           </CardDescription>
