@@ -6,7 +6,27 @@ This document outlines the major architectural transformation of BoardWex from a
 
 ## Key Changes
 
-### 1. Removed Real-time Collaboration Infrastructure
+### 1. Authentication Migration: Clerk to Auth.js
+
+**Before:**
+- **Clerk**: Proprietary authentication service ($74/month)
+- Organization-based multi-tenancy
+- Built-in UI components and organization switcher
+- Managed user sessions and JWT tokens
+
+**After:**
+- **Auth.js v5 (NextAuth)**: Open-source authentication (free)
+- Single-user workspace model
+- OAuth providers (Google, GitHub)
+- Self-managed sessions with Edge runtime compatibility
+
+**Benefits:**
+- Complete cost elimination for authentication
+- Full control over authentication flow
+- No vendor lock-in
+- Simpler data model without organizations
+
+### 2. Removed Real-time Collaboration Infrastructure
 
 **Before:**
 - **Liveblocks**: Real-time collaboration service ($49/month for 5K MAU)
@@ -51,14 +71,28 @@ const setLayers = useCanvasStore(state => state.setLayers)
 
 **After (PostgreSQL + Prisma):**
 ```prisma
+// Auth.js models
+model User {
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  name          String?
+  boards        Board[]
+  favorites     UserFavorite[]
+  accounts      Account[]
+  sessions      Session[]
+}
+
 model Board {
   id          String   @id @default(cuid())
   title       String
   imageUrl    String
-  orgId       String
-  authorId    String
-  authorName  String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
   canvasData  Json?    @default("{}") @db.JsonB  // Optimized JSONB storage
+  isPublic    Boolean  @default(false)
+  shareId     String?  @unique @default(cuid())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -88,9 +122,10 @@ model Board {
 ## Migration Benefits
 
 ### Cost Savings
+- **Clerk**: $74/month → $0
 - **Liveblocks**: $49/month → $0
 - **Convex**: $25/month → $0
-- **Total**: $74/month → $0 (only hosting costs remain)
+- **Total**: $148/month → $0 (only hosting costs remain)
 
 ### Developer Experience
 - Simpler mental model (no distributed systems complexity)
@@ -120,6 +155,35 @@ With the simplified architecture, we can now focus on:
 2. **Performance**: Canvas virtualization, WebGL rendering
 3. **Local Storage**: IndexedDB for offline persistence
 4. **Privacy**: All data stays on user's infrastructure
+
+## Authentication Architecture
+
+### Edge Runtime Compatibility
+Auth.js v5 is configured with Edge runtime compatibility for optimal performance:
+
+```typescript
+// auth.config.ts - Edge-compatible configuration
+export default {
+  providers: [GoogleProvider, GitHubProvider],
+  pages: { signIn: '/auth/signin', error: '/auth/error' },
+  callbacks: { /* JWT-based session management */ }
+} satisfies NextAuthConfig
+
+// auth.ts - Node.js runtime with PrismaAdapter
+export const { auth, signIn, signOut } = NextAuth({
+  ...authConfig,
+  adapter: PrismaAdapter(db),
+  session: { strategy: "jwt" }
+})
+
+// middleware.ts - Edge runtime protection
+export default NextAuth(authConfig).auth
+```
+
+### Security Improvements
+1. **No Account Linking Vulnerabilities**: Removed `allowDangerousEmailAccountLinking`
+2. **Proper Authorization**: All API routes verify user ownership
+3. **Configurable Routes**: Centralized auth route configuration
 
 ## Code Examples
 
