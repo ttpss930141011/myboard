@@ -7,13 +7,69 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Auth.js models
+model User {
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  
+  accounts      Account[]
+  sessions      Session[]
+  boards        Board[]
+  favorites     UserFavorite[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Application models
 model Board {
   id          String   @id @default(cuid())
   title       String
   imageUrl    String
-  orgId       String
-  authorId    String
+  userId      String   // Changed from orgId to userId
   authorName  String
+  
+  // Sharing features
+  isPublic    Boolean  @default(false)
+  shareId     String?  @unique @default(cuid())
   
   // Canvas data stored as JSONB for better performance
   canvasData  Json?    @default("{}") @db.JsonB
@@ -22,11 +78,12 @@ model Board {
   updatedAt   DateTime @updatedAt
   
   // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   favorites   UserFavorite[]
   
   // Indexes for performance
-  @@index([orgId])
-  @@index([authorId])
+  @@index([userId])
+  @@index([shareId])
   @@index([title])
 }
 
@@ -34,14 +91,14 @@ model UserFavorite {
   id        String   @id @default(cuid())
   userId    String
   boardId   String
-  orgId     String
   
+  user      User     @relation(fields: [userId], references: [id])
   board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   
   createdAt DateTime @default(now())
   
   @@unique([userId, boardId])
-  @@index([userId, orgId])
+  @@index([userId])
 }
 
 // Optional: Store canvas history for undo/redo persistence

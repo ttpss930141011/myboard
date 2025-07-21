@@ -5,11 +5,10 @@ import { cn } from '@/lib/utils'
 import { useCreateBoard } from '@/hooks/api/use-boards'
 
 interface NewBoardButtonProps {
-  orgId: string
   disabled?: boolean
 }
 
-export const NewBoardButton = ({ orgId, disabled }: NewBoardButtonProps) => {
+export const NewBoardButton = ({ disabled }: NewBoardButtonProps) => {
   const createBoard = useCreateBoard()
 
   const onClick = () => {

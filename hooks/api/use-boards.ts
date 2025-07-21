@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useOrganization } from '@clerk/nextjs'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
@@ -15,15 +15,12 @@ interface Board {
 }
 
 export function useBoards(options?: { search?: string, favorites?: boolean }) {
-  const { organization } = useOrganization()
+  const { data: session } = useSession()
   
   return useQuery<Board[]>({
-    queryKey: ['boards', organization?.id, options],
+    queryKey: ['boards', session?.user?.id, options],
     queryFn: async () => {
-      if (!organization?.id) throw new Error('No organization')
-      
-      const params = new URLSearchParams({ 
-        orgId: organization.id,
+      const params = new URLSearchParams({
         ...(options?.search && { search: options.search }),
         ...(options?.favorites && { favorites: 'true' })
       })
@@ -32,7 +29,7 @@ export function useBoards(options?: { search?: string, favorites?: boolean }) {
       if (!res.ok) throw new Error('Failed to fetch boards')
       return res.json()
     },
-    enabled: !!organization?.id,
+    enabled: !!session?.user?.id,
   })
 }
 
@@ -50,17 +47,15 @@ export function useBoard(boardId: string) {
 
 export function useCreateBoard() {
   const queryClient = useQueryClient()
-  const { organization } = useOrganization()
+  const { data: session } = useSession()
   const router = useRouter()
   
   return useMutation({
     mutationFn: async ({ title }: { title: string }) => {
-      if (!organization?.id) throw new Error('No organization')
-      
       const res = await fetch('/api/boards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, orgId: organization.id }),
+        body: JSON.stringify({ title }),
       })
       
       if (!res.ok) {
@@ -71,7 +66,7 @@ export function useCreateBoard() {
       return res.json()
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['boards', organization?.id] })
+      queryClient.invalidateQueries({ queryKey: ['boards', session?.user?.id] })
       toast.success('Board created!')
       router.push(`/board/${data._id}`)
     },
@@ -83,7 +78,7 @@ export function useCreateBoard() {
 
 export function useUpdateBoard(boardId: string) {
   const queryClient = useQueryClient()
-  const { organization } = useOrganization()
+  const { data: session } = useSession()
   
   return useMutation({
     mutationFn: async ({ title }: { title: string }) => {
@@ -102,7 +97,7 @@ export function useUpdateBoard(boardId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['board', boardId] })
-      queryClient.invalidateQueries({ queryKey: ['boards', organization?.id] })
+      queryClient.invalidateQueries({ queryKey: ['boards', session?.user?.id] })
       toast.success('Board updated!')
     },
     onError: (error: Error) => {
@@ -113,7 +108,7 @@ export function useUpdateBoard(boardId: string) {
 
 export function useDeleteBoard(boardId: string) {
   const queryClient = useQueryClient()
-  const { organization } = useOrganization()
+  const { data: session } = useSession()
   const router = useRouter()
   
   return useMutation({
@@ -127,7 +122,7 @@ export function useDeleteBoard(boardId: string) {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['boards', organization?.id] })
+      queryClient.invalidateQueries({ queryKey: ['boards', session?.user?.id] })
       toast.success('Board deleted!')
       router.push('/')
     },

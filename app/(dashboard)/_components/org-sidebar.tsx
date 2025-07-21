@@ -5,9 +5,9 @@ import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { Poppins } from 'next/font/google'
 import { LayoutDashboard, Star } from 'lucide-react'
-import { OrganizationSwitcher } from '@clerk/nextjs'
 
 import { Button } from '@/components/ui/button'
+import { UserMenu } from './user-menu'
 
 import { cn } from '@/lib/utils'
 
@@ -16,30 +16,6 @@ const font = Poppins({ subsets: ['latin'], weight: ['600'] })
 export const OrgSidebar = () => {
   const searchParams = useSearchParams()
   const favorites = searchParams.get('favorites')
-
-  const orgTileStyles = {
-    variables: {
-      colorPrimary: '#ffbf42',
-      colorAlphaShade: '#ffbf42',
-    },
-    elements: {
-      rootBox: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: '100%',
-        maxWidth: '376px',
-      },
-      organizationSwitcherTrigger: {
-        padding: '6px',
-        width: '100%',
-        borderRadius: '8px',
-        border: '1px solid #e5e7eb',
-        justifyContent: 'space-between',
-        backgroundColor: 'white',
-      },
-    },
-  }
 
   return (
     <div className="hidden lg:flex flex-col space-y-6 w-[206px] pl-5 pt-5">
@@ -51,7 +27,7 @@ export const OrgSidebar = () => {
           </span>
         </div>
       </Link>
-      <OrganizationSwitcher hidePersonal appearance={orgTileStyles} />
+      <UserMenu />
       <div className="space-y-1 w-full">
         <Button
           variant={favorites ? 'ghost' : 'secondary'}
@@ -61,7 +37,7 @@ export const OrgSidebar = () => {
         >
           <Link href="/">
             <LayoutDashboard className="h-4 w-4 mr-2 stroke-amber" />
-            Team boards
+            My boards
           </Link>
         </Button>
         <Button

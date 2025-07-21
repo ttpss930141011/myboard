@@ -42,9 +42,10 @@ const MAX_LAYERS = 100
 
 interface CanvasProps {
   boardId: string
+  readonly?: boolean
 }
 
-export const Canvas = ({ boardId }: CanvasProps) => {
+export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
   const { isLoading } = useCanvas(boardId)
   const svgRef = useRef<SVGSVGElement>(null)
   const rafRef = useRef<number>()
@@ -602,18 +603,22 @@ export const Canvas = ({ boardId }: CanvasProps) => {
   return (
     <main className="h-full w-full relative bg-neutral-100 touch-none">
       <Info boardId={boardId} />
-      <Toolbar
-        canvasState={canvasState}
-        setCanvasState={setCanvasState}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        undo={undo}
-        redo={redo}
-      />
-      <SelectionTools
-        isAnimated={false}
-        setLastUsedColor={setLastUsedColor}
-      />
+      {!readonly && (
+        <>
+          <Toolbar
+            canvasState={canvasState}
+            setCanvasState={setCanvasState}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            undo={undo}
+            redo={redo}
+          />
+          <SelectionTools
+            isAnimated={false}
+            setLastUsedColor={setLastUsedColor}
+          />
+        </>
+      )}
       <svg
         ref={svgRef}
         className="h-[100vh] w-[100vw] touch-none"
@@ -630,10 +635,10 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                     ? 'nwse-resize'
                     : 'default'
         }}
-        onPointerMove={onPointerMove}
+        onPointerMove={readonly ? undefined : onPointerMove}
         onPointerLeave={onPointerLeave}
-        onPointerDown={onPointerDown}
-        onPointerUp={onPointerUp}
+        onPointerDown={readonly ? undefined : onPointerDown}
+        onPointerUp={readonly ? undefined : onPointerUp}
         onDragStart={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
       >
@@ -650,11 +655,11 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         >
           <CanvasLayers
             layerIds={layerIds}
-            onLayerPointerDown={onLayerPointerDown}
+            onLayerPointerDown={readonly ? undefined : onLayerPointerDown}
             layerIdsToColorSelection={layerIdsToColorSelection}
           />
           <SelectionBox
-            onResizeHandlePointerDown={onResizeHandlePointerDown}
+            onResizeHandlePointerDown={readonly ? undefined : onResizeHandlePointerDown}
           />
           {canvasState.mode === CanvasMode.SelectionNet &&
             canvasState.current != null && (

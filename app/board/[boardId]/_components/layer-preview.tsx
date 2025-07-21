@@ -14,7 +14,7 @@ import { useCanvasStore } from '@/stores/canvas-store'
 
 interface LayerPreviewProps {
   id: string
-  onLayerPointerDown: (e: React.PointerEvent, layerId: string) => void
+  onLayerPointerDown?: (e: React.PointerEvent, layerId: string) => void
   selectionColor?: string
 }
 
@@ -30,7 +30,7 @@ export const LayerPreview = memo(
           <Path
             key={id}
             points={layer.points}
-            onPointerDown={e => onLayerPointerDown(e, id)}
+            onPointerDown={onLayerPointerDown ? (e) => onLayerPointerDown(e, id) : undefined}
             x={layer.x}
             y={layer.y}
             fill={layer.fill ? colorToCss(layer.fill) : '#000'}

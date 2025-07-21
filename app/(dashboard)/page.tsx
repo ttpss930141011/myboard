@@ -1,6 +1,6 @@
 'use client'
 
-import { useOrganization } from '@clerk/nextjs'
+import { useSession } from 'next-auth/react'
 
 import { EmptyOrg } from './_components/empty-org'
 import { BoardList } from './_components/board-list'
@@ -13,14 +13,14 @@ interface DashboardPageProps {
 }
 
 const DashboardPage = ({ searchParams }: DashboardPageProps) => {
-  const { organization } = useOrganization()
+  const { data: session } = useSession()
 
   return (
     <div className="flex-1 h-[calc(100%-80px)] p-6">
-      {!organization ? (
+      {!session ? (
         <EmptyOrg />
       ) : (
-        <BoardList orgId={organization.id} query={searchParams} />
+        <BoardList query={searchParams} />
       )}
     </div>
   )
