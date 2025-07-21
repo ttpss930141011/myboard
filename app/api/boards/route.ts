@@ -1,6 +1,7 @@
 import { AuthService } from '@/lib/auth/auth-service'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import type { Board, UserFavorite } from '@prisma/client'
 
 export async function GET(request: Request) {
   try {
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
     }
     
     // Transform to match existing format
-    const transformedBoards = boards.map(board => ({
+    const transformedBoards = boards.map((board: Board & { favorites: UserFavorite[] }) => ({
       _id: board.id,
       _creationTime: board.createdAt.getTime(),
       title: board.title,
