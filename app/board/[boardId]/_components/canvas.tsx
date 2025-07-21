@@ -152,7 +152,7 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
           childIds: [],
           name: 'Frame',
           fill: undefined, // Frames typically don't have fill by default
-        })
+        } as any) // Type assertion needed due to union type
       } else {
         insertLayer(baseLayer)
       }

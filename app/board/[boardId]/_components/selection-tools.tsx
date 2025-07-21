@@ -32,8 +32,13 @@ export const SelectionTools = memo(
       const layers = getSelectedLayers()
       if (layers.length === 0) return undefined
       
-      const firstColor = layers[0].fill
-      const allSameColor = layers.every(layer => 
+      // Filter out layers without fill (like frames)
+      const layersWithFill = layers.filter(layer => layer.fill !== undefined)
+      if (layersWithFill.length === 0) return undefined
+      
+      const firstColor = layersWithFill[0].fill!
+      const allSameColor = layersWithFill.every(layer => 
+        layer.fill &&
         layer.fill.r === firstColor.r &&
         layer.fill.g === firstColor.g &&
         layer.fill.b === firstColor.b
