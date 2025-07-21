@@ -1,6 +1,6 @@
 # Next.js 15 Upgrade Guide
 
-This document details the upgrade from Next.js 14.1.1 to Next.js 15.4.2 in the Personal Miro project.
+This document details the upgrade from Next.js 14.1.1 to Next.js 15.4.2 in the MyBoard project.
 
 ## Overview
 

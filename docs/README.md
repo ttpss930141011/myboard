@@ -1,6 +1,6 @@
-# Personal Miro Documentation
+# MyBoard Documentation
 
-Welcome to the documentation for Personal Miro - a single-user whiteboard application forked from BoardWex.
+Welcome to the documentation for MyBoard - a personal single-user whiteboard application.
 
 ## Documentation Structure
 
@@ -20,7 +20,7 @@ Welcome to the documentation for Personal Miro - a single-user whiteboard applic
 ## Quick Links
 
 - [Main README](../README.md) - Project overview and setup
-- [GitHub Repository](https://github.com/ttpss930141011/personal-miro)
+- [GitHub Repository](https://github.com/ttpss930141011/myboard)
 
 ## Key Features
 

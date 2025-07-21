@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the major architectural transformation of BoardWex from a real-time collaborative whiteboard (Miro clone) to a single-user personal whiteboard application. This refactoring removed expensive SaaS dependencies while maintaining all core functionality.
+This document outlines the major architectural transformation from the original BoardWex (a real-time collaborative whiteboard) to MyBoard - a single-user personal whiteboard application. This refactoring removed expensive SaaS dependencies while maintaining all core functionality.
 
 ## Key Changes
 

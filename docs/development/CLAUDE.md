@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BoardWex is a real-time collaborative whiteboard application (Miro clone) built with:
+MyBoard is a personal whiteboard application (Miro clone) built with:
 - **Frontend**: Next.js 14, React 18, TypeScript (strict mode)
 - **Database**: Prisma with PostgreSQL
 - **Auth**: Clerk (with organizations and invites)

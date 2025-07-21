@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This report outlines the comprehensive migration plan from Clerk to Auth.js (NextAuth v5) for the Personal Miro whiteboard application. The migration will remove the paid Clerk dependency while maintaining authentication functionality, simplified for a single-user focused application with read-only sharing capabilities.
+This report outlines the comprehensive migration plan from Clerk to Auth.js (NextAuth v5) for the MyBoard whiteboard application. The migration will remove the paid Clerk dependency while maintaining authentication functionality, simplified for a single-user focused application with read-only sharing capabilities.
 
 ## Current State Analysis
 

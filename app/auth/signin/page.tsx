@@ -4,8 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Sign In - BoardWex",
-  description: "Sign in to your BoardWex account",
+  title: "Sign In - MyBoard",
+  description: "Sign in to your MyBoard account",
 }
 
 export default function SignInPage() {

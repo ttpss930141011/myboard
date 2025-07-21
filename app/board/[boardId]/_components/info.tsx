@@ -39,7 +39,7 @@ export const Info = ({ boardId }: InfoProps) => {
                 font.className
               )}
             >
-              BoardWex
+              MyBoard
             </span>
           </Link>
         </Button>

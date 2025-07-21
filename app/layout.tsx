@@ -12,8 +12,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'BoardWex - Collaborate while drawing notes',
-  description: 'Collaborate while drawing notes.',
+  title: 'MyBoard - Personal whiteboard for drawing and notes',
+  description: 'Your personal whiteboard for drawing, notes, and creative thinking.',
 }
 
 export default function RootLayout({

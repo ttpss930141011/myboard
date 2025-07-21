@@ -1,6 +1,6 @@
 # Auth.js Setup Guide
 
-This guide walks you through setting up Auth.js v5 (NextAuth) for the Personal Miro application.
+This guide walks you through setting up Auth.js v5 (NextAuth) for the MyBoard application.
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ Create a `.env` file in your project root with the following variables:
 
 ```env
 # Database (required)
-DATABASE_URL="postgresql://user:password@localhost:5432/personal_miro"
+DATABASE_URL="postgresql://user:password@localhost:5432/myboard"
 
 # Auth.js Configuration (required)
 NEXTAUTH_URL=http://localhost:3000
