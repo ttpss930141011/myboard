@@ -252,6 +252,12 @@ For issues related to:
 - **OAuth Providers**: Refer to provider-specific documentation
 - **This Project**: Open an issue on GitHub
 
+## Related Documentation
+
+- [Migration Guide](./CLERK_TO_AUTHJS_MIGRATION.md) - Complete migration details from Clerk
+- [Architecture Changes](./architecture/ARCHITECTURE_CHANGES.md) - Overall architecture transformation
+- [Main README](../README.md) - Project overview and quick start
+
 ## References
 
 - [Auth.js Documentation](https://authjs.dev/)

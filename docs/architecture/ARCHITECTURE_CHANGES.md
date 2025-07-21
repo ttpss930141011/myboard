@@ -222,3 +222,9 @@ insertLayer: (layer) => {
 ## Conclusion
 
 This architectural transformation demonstrates that not every application needs real-time collaboration. By focusing on single-user experience, we've created a faster, simpler, and more maintainable application while eliminating ongoing SaaS costs. The codebase is now more accessible to contributors and easier to deploy on any infrastructure.
+
+## Related Documentation
+
+- [Clerk to Auth.js Migration Guide](../CLERK_TO_AUTHJS_MIGRATION.md) - Detailed migration steps
+- [Auth.js Setup Guide](../AUTHJS_SETUP_GUIDE.md) - Setup instructions for new installations
+- [Main README](../../README.md) - Project overview and quick start
