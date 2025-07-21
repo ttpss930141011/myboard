@@ -11,10 +11,11 @@ The original project relied heavily on paid SaaS services:
 - **Convex** - Backend-as-a-Service platform (usage-based pricing)
 
 This fork removes these dependencies to create a **completely free and self-hostable** solution:
-- ✅ **No monthly fees** - Use your own PostgreSQL database
+- ✅ **No monthly fees** - Use your own PostgreSQL database  
 - ✅ **Full data ownership** - Your drawings stay on your server
 - ✅ **Simple architecture** - Zustand for state, Prisma for persistence
 - ✅ **Easy deployment** - Standard Next.js app, deploy anywhere
+- ✅ **Open-source auth** - Replaced Clerk ($74/month) with free Auth.js
 
 ## ✨ Features
 
@@ -32,12 +33,12 @@ This fork removes these dependencies to create a **completely free and self-host
 - 🔍 **Zoom & Pan** - Navigate your canvas with mouse or trackpad
 - 📐 **Grid Background** - Optional grid for precision placement
 
-### Organization & Storage
+### Personal Workspace
 - 💾 **Auto-save** - Changes persist automatically to PostgreSQL
 - ⭐ **Favorites** - Mark important boards for quick access
 - 🗂️ **Board Management** - Create, rename, and delete boards
-- 🔐 **Authentication** - Secure personal workspace with Clerk
-- 🏢 **Organizations** - Separate workspaces for different projects
+- 🔐 **Authentication** - Secure personal workspace with OAuth (Google/GitHub)
+- 🔗 **Public Sharing** - Share read-only board links with anyone
 
 ### Performance & UX
 - ⚡ **Optimized Rendering** - Smooth 60fps canvas operations
@@ -51,7 +52,7 @@ This fork removes these dependencies to create a **completely free and self-host
 - **Language**: [TypeScript](https://www.typescriptlang.org/) (strict mode)
 - **Database**: [PostgreSQL](https://www.postgresql.org/) with [Prisma ORM](https://www.prisma.io/)
 - **State Management**: [Zustand](https://github.com/pmndrs/zustand) with Immer middleware
-- **Authentication**: [Clerk](https://clerk.com/) with organizations
+- **Authentication**: [Auth.js v5](https://authjs.dev/) (NextAuth) with OAuth providers
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) + [Shadcn/UI](https://ui.shadcn.com/)
 - **Data Fetching**: [TanStack Query](https://tanstack.com/query) (React Query)
 - **Package Manager**: [pnpm](https://pnpm.io/)
@@ -87,10 +88,18 @@ Create a `.env` file in the root directory:
 # Database
 DATABASE_URL="postgresql://user:password@localhost:5432/personal_miro"
 
-# Clerk Authentication
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-CLERK_SECRET_KEY=sk_test_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-CLERK_JWT_ISSUER_DOMAIN=https://your-clerk-domain.clerk.accounts.dev
+# Auth.js Configuration
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key-here # Generate with: openssl rand -base64 32
+
+# OAuth Providers (Optional - choose one or both)
+# Google OAuth
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# GitHub OAuth
+GITHUB_ID=your-github-client-id
+GITHUB_SECRET=your-github-client-secret
 ```
 
 ### 4. Set up the database
@@ -121,9 +130,37 @@ Open [http://localhost:3000](http://localhost:3000) to see your application.
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `DATABASE_URL` | PostgreSQL connection string | ✅ |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk public key for authentication | ✅ |
-| `CLERK_SECRET_KEY` | Clerk secret key for backend | ✅ |
-| `CLERK_JWT_ISSUER_DOMAIN` | Clerk JWT issuer domain | ✅ |
+| `NEXTAUTH_URL` | The URL of your application (e.g., http://localhost:3000) | ✅ |
+| `NEXTAUTH_SECRET` | Secret key for JWT encryption (generate with `openssl rand -base64 32`) | ✅ |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID | ⚠️ At least one OAuth provider required |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | ⚠️ |
+| `GITHUB_ID` | GitHub OAuth app ID | ⚠️ At least one OAuth provider required |
+| `GITHUB_SECRET` | GitHub OAuth app secret | ⚠️ |
+
+## 🔐 Authentication Setup
+
+### Setting up OAuth Providers
+
+You need at least one OAuth provider configured. Here's how to set them up:
+
+#### Google OAuth
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing one
+3. Enable Google+ API
+4. Create OAuth 2.0 credentials
+5. Add authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
+6. Copy the Client ID and Client Secret to your `.env` file
+
+#### GitHub OAuth
+1. Go to GitHub Settings > Developer settings > OAuth Apps
+2. Click "New OAuth App"
+3. Set Authorization callback URL: `http://localhost:3000/api/auth/callback/github`
+4. Copy the Client ID and Client Secret to your `.env` file
+
+### Production Setup
+For production deployment, update the redirect URIs to your production domain:
+- Google: `https://yourdomain.com/api/auth/callback/google`
+- GitHub: `https://yourdomain.com/api/auth/callback/github`
 
 ## 🎮 Usage
 
@@ -225,13 +262,13 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [x] Add PostgreSQL with Prisma for persistence
 - [x] Implement auto-save functionality
 
-### Phase 2: Authentication Independence 🚧
-- [ ] **Remove Clerk dependency** (Next priority!)
-- [ ] Implement self-hosted authentication
-  - [ ] NextAuth.js integration
-  - [ ] Local user management
-  - [ ] Optional OAuth providers (Google, GitHub)
-- [ ] Migrate existing user data
+### Phase 2: Authentication Independence ✅
+- [x] **Remove Clerk dependency** 
+- [x] Implement self-hosted authentication
+  - [x] Auth.js v5 (NextAuth) integration
+  - [x] User management with Prisma
+  - [x] OAuth providers (Google, GitHub)
+- [x] Database migration strategy
 
 ### Phase 3: Enhanced Features 📋
 - [ ] Offline mode with sync
