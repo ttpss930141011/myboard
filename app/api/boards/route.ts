@@ -56,7 +56,7 @@ export async function GET(request: Request) {
     }
     
     // Transform to match existing format
-    const transformedBoards = boards.map(board => ({
+    const transformedBoards = boards.map((board) => ({
       _id: board.id,
       _creationTime: board.createdAt.getTime(),
       title: board.title,
