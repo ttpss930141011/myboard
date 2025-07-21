@@ -1,7 +1,10 @@
 import { signIn } from "@/auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Metadata } from "next"
+import { Mail } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "Sign In - MyBoard",
@@ -19,6 +22,41 @@ export default function SignInPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <form
+            action={async (formData) => {
+              "use server"
+              const email = formData.get("email") as string
+              await signIn("resend", { email, redirectTo: "/" })
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="name@example.com"
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full">
+              <Mail className="mr-2 h-4 w-4" />
+              Sign in with Email
+            </Button>
+          </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                or continue with
+              </span>
+            </div>
+          </div>
+
           <form
             action={async () => {
               "use server"
