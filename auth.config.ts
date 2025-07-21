@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import GitHubProvider from "next-auth/providers/github"
+import Resend from "next-auth/providers/resend"
 import { AUTH_ROUTES, PUBLIC_ROUTES } from "@/lib/constants"
 
 /**
@@ -9,6 +10,9 @@ import { AUTH_ROUTES, PUBLIC_ROUTES } from "@/lib/constants"
  */
 export default {
   providers: [
+    Resend({
+      from: "MyBoard <noreply@justinxiao.app>"
+    }),
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
