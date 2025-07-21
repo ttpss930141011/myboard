@@ -6,7 +6,9 @@ This guide walks you through setting up Auth.js v5 (NextAuth) for the MyBoard ap
 
 - Node.js 18+ installed
 - PostgreSQL database running
-- Google and/or GitHub OAuth app credentials
+- At least one authentication provider:
+  - Resend account (recommended) for email authentication
+  - Google and/or GitHub OAuth app credentials (optional)
 
 ## Step 1: Environment Setup
 
@@ -17,10 +19,14 @@ Create a `.env` file in your project root with the following variables:
 DATABASE_URL="postgresql://user:password@localhost:5432/myboard"
 
 # Auth.js Configuration (required)
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key-here
+AUTH_SECRET=your-secret-key-here
 
-# OAuth Providers (at least one required)
+# Email Provider - Resend (recommended)
+AUTH_RESEND_KEY=re_xxxxxxxxxxxx
+# Optional: Custom from address (default: noreply@myboard.justinxiao.app)
+# AUTH_EMAIL_FROM="MyBoard <noreply@yourdomain.com>"
+
+# OAuth Providers (optional - for social login)
 # Google
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
@@ -30,7 +36,7 @@ GITHUB_ID=your-github-client-id
 GITHUB_SECRET=your-github-client-secret
 ```
 
-### Generating NEXTAUTH_SECRET
+### Generating AUTH_SECRET
 
 Generate a secure secret key:
 
@@ -38,7 +44,39 @@ Generate a secure secret key:
 openssl rand -base64 32
 ```
 
-## Step 2: OAuth Provider Setup
+## Step 2: Authentication Provider Setup
+
+### Email Authentication (Resend) - Recommended
+
+Email authentication is the simplest and most reliable method, especially for preview deployments.
+
+#### Setting up Resend
+
+1. Sign up for a free account at [Resend](https://resend.com)
+2. Navigate to the API Keys section
+3. Create a new API key
+4. Copy the key (starts with `re_`) to your `.env` file as `AUTH_RESEND_KEY`
+
+#### Custom Domain Setup (Optional)
+
+For production use, you can configure a custom domain:
+
+1. In Resend dashboard, go to "Domains"
+2. Add your domain (e.g., `justinxiao.app`)
+3. Configure the DNS records as shown:
+   ```
+   # SPF Record
+   TXT  @  "v=spf1 include:amazonses.com ~all"
+   
+   # DKIM Record (Resend will provide the exact value)
+   CNAME  resend._domainkey  [value].dkim.amazonses.com
+   ```
+4. Once verified, update `AUTH_EMAIL_FROM` in your `.env`:
+   ```env
+   AUTH_EMAIL_FROM="MyBoard <noreply@yourdomain.com>"
+   ```
+
+### OAuth Provider Setup (Optional)
 
 ### Google OAuth Setup
 
@@ -111,9 +149,15 @@ Edge runtime instance for middleware:
 
 3. You should be redirected to the sign-in page
 
-4. Click on Google or GitHub to authenticate
+4. Choose your authentication method:
+   - **Email**: Enter your email address and click "Sign in with Email"
+   - **OAuth**: Click on Google or GitHub to authenticate
 
-5. After successful authentication, you'll be redirected to the dashboard
+5. For email authentication:
+   - Check your email for the magic link
+   - Click the link to sign in
+
+6. After successful authentication, you'll be redirected to the dashboard
 
 ## Step 6: Production Deployment
 
@@ -132,9 +176,21 @@ For production deployment, update your OAuth provider settings:
 Update your production environment variables:
 
 ```env
-NEXTAUTH_URL=https://yourdomain.com
-NEXTAUTH_SECRET=production-secret-key # Generate a new one for production!
+# Required
+AUTH_SECRET=production-secret-key # Generate a new one for production!
+
+# Email Provider
+AUTH_RESEND_KEY=re_xxxxxxxxxxxx # Your production Resend API key
+AUTH_EMAIL_FROM="MyBoard <noreply@yourdomain.com>" # Your verified domain
+
+# OAuth Providers (if using)
+GOOGLE_CLIENT_ID=your-production-google-id
+GOOGLE_CLIENT_SECRET=your-production-google-secret
+GITHUB_ID=your-production-github-id
+GITHUB_SECRET=your-production-github-secret
 ```
+
+**Note**: NextAuth v5 automatically detects the URL in Vercel deployments, so you don't need to set `NEXTAUTH_URL` explicitly.
 
 ### Database
 
@@ -158,12 +214,17 @@ pnpm exec prisma migrate deploy
    - Make sure NEXTAUTH_URL is set in your environment
    - For Vercel, add it to your project settings
 
-3. **Database connection errors**
+3. **"Preview deployments not working"**
+   - Ensure AUTH_TRUST_HOST=true is set in vercel.json
+   - Email authentication works best for preview deployments
+   - OAuth requires callback URL registration for each preview URL
+
+4. **Database connection errors**
    - Verify DATABASE_URL is correct
    - Ensure PostgreSQL is running
    - Check network connectivity
 
-4. **OAuth provider errors**
+5. **OAuth provider errors**
    - Verify Client ID and Secret are correct
    - Check if the OAuth app is enabled
    - Ensure redirect URIs are properly configured

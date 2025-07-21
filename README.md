@@ -90,10 +90,14 @@ Create a `.env` file in the root directory:
 DATABASE_URL="postgresql://user:password@localhost:5432/myboard"
 
 # Auth.js Configuration
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key-here # Generate with: openssl rand -base64 32
+AUTH_SECRET=your-secret-key-here # Generate with: openssl rand -base64 32
 
-# OAuth Providers (Optional - choose one or both)
+# Email Provider (Resend) - Recommended
+AUTH_RESEND_KEY=re_xxxxxxxxxxxx # Get from https://resend.com
+# Optional: Custom from address
+# AUTH_EMAIL_FROM="MyBoard <noreply@yourdomain.com>"
+
+# OAuth Providers (Optional - for social login)
 # Google OAuth
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
@@ -128,9 +132,31 @@ Open [http://localhost:3000](http://localhost:3000) to see your application.
 
 ## 🔐 Authentication Setup
 
-### Setting up OAuth Providers
+MyBoard supports multiple authentication methods. You can use email magic links (recommended for preview deployments) or OAuth providers.
 
-You need at least one OAuth provider configured. Here's how to set them up:
+### Email Authentication (Resend) - Recommended
+
+Email authentication is the simplest way to get started and works perfectly for preview deployments.
+
+#### Setting up Resend
+1. Sign up for a free account at [Resend](https://resend.com)
+2. Get your API key from the dashboard
+3. Add to your `.env` file:
+   ```bash
+   AUTH_RESEND_KEY=re_xxxxxxxxxxxx
+   # Optional: Custom from address (default: noreply@myboard.justinxiao.app)
+   AUTH_EMAIL_FROM="MyBoard <noreply@yourdomain.com>"
+   ```
+
+#### Domain Configuration (Optional)
+For production, you can use your own domain:
+1. Add your domain in Resend dashboard
+2. Configure DNS records as instructed
+3. Update `AUTH_EMAIL_FROM` to use your domain
+
+### OAuth Providers (Optional)
+
+If you prefer social login, you can configure OAuth providers:
 
 #### Google OAuth
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
@@ -147,9 +173,11 @@ You need at least one OAuth provider configured. Here's how to set them up:
 4. Copy the Client ID and Client Secret to your `.env` file
 
 ### Production Setup
-For production deployment, update the redirect URIs to your production domain:
-- Google: `https://yourdomain.com/api/auth/callback/google`
-- GitHub: `https://yourdomain.com/api/auth/callback/github`
+For production deployment:
+- **Email**: Works automatically with your domain
+- **OAuth**: Update redirect URIs to your production domain:
+  - Google: `https://yourdomain.com/api/auth/callback/google`
+  - GitHub: `https://yourdomain.com/api/auth/callback/github`
 
 ## 🎮 Usage
 

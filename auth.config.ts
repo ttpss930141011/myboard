@@ -11,7 +11,7 @@ import { AUTH_ROUTES, PUBLIC_ROUTES } from "@/lib/constants"
 export default {
   providers: [
     Resend({
-      from: "MyBoard <noreply@justinxiao.app>"
+      from: process.env.AUTH_EMAIL_FROM || "MyBoard <noreply@myboard.justinxiao.app>"
     }),
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
