@@ -1,4 +1,5 @@
-'use client'
+'use client';
+import { use } from "react";
 
 import { useSession } from 'next-auth/react'
 
@@ -6,13 +7,14 @@ import { EmptyOrg } from './_components/empty-org'
 import { BoardList } from './_components/board-list'
 
 interface DashboardPageProps {
-  searchParams: {
+  searchParams: Promise<{
     search?: string
     favorites?: string
-  }
+  }>
 }
 
-const DashboardPage = ({ searchParams }: DashboardPageProps) => {
+const DashboardPage = (props: DashboardPageProps) => {
+  const searchParams = use(props.searchParams);
   const { data: session } = useSession()
 
   return (

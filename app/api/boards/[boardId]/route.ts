@@ -2,10 +2,8 @@ import { AuthService } from '@/lib/auth/auth-service'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
-export async function GET(
-  request: Request,
-  { params }: { params: { boardId: string } }
-) {
+export async function GET(request: Request, props: { params: Promise<{ boardId: string }> }) {
+  const params = await props.params;
   try {
     const board = await prisma.board.findUnique({
       where: { id: params.boardId }
@@ -29,10 +27,8 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: { boardId: string } }
-) {
+export async function PATCH(request: Request, props: { params: Promise<{ boardId: string }> }) {
+  const params = await props.params;
   try {
     const user = await AuthService.requireAuth()
     
@@ -74,10 +70,8 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { boardId: string } }
-) {
+export async function DELETE(request: Request, props: { params: Promise<{ boardId: string }> }) {
+  const params = await props.params;
   try {
     const user = await AuthService.requireAuth()
     

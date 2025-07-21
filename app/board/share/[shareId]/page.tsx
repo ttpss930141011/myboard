@@ -3,21 +3,22 @@ import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 
 interface SharePageProps {
-  params: { shareId: string }
+  params: Promise<{ shareId: string }>
 }
 
-export default async function SharePage({ params }: SharePageProps) {
+export default async function SharePage(props: SharePageProps) {
+  const params = await props.params;
   const board = await prisma.board.findUnique({
     where: { 
       shareId: params.shareId,
       isPublic: true 
     }
   })
-  
+
   if (!board) {
     notFound()
   }
-  
+
   return (
     <div className="h-screen flex flex-col">
       <div className="p-4 border-b bg-white">
