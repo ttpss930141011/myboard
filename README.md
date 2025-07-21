@@ -49,7 +49,7 @@ This fork removes these dependencies to create a **completely free and self-host
 
 ## 🚀 Tech Stack
 
-- **Framework**: [Next.js 14](https://nextjs.org/) with App Router
+- **Framework**: [Next.js 15](https://nextjs.org/) with App Router
 - **Language**: [TypeScript](https://www.typescriptlang.org/) (strict mode)
 - **Database**: [PostgreSQL](https://www.postgresql.org/) with [Prisma ORM](https://www.prisma.io/)
 - **State Management**: [Zustand](https://github.com/pmndrs/zustand) with Immer middleware
