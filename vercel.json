@@ -1,4 +1,7 @@
 {
   "buildCommand": "pnpm run build",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "env": {
+    "AUTH_TRUST_HOST": "true"
+  }
 }
