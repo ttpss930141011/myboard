@@ -118,7 +118,8 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
         | LayerType.Ellipse
         | LayerType.Rectangle
         | LayerType.Text
-        | LayerType.Note,
+        | LayerType.Note
+        | LayerType.Frame,
       position: Point
     ) => {
       if (layerIds.length >= MAX_LAYERS) {
@@ -130,18 +131,31 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
         [LayerType.Rectangle]: { width: 100, height: 100 },
         [LayerType.Ellipse]: { width: 100, height: 100 },
         [LayerType.Text]: { width: 100, height: 100 },
+        [LayerType.Frame]: { width: 400, height: 300 },
       }
       
       const size = defaultSizes[layerType] || { width: 100, height: 100 }
       
-      insertLayer({
+      const baseLayer = {
         type: layerType,
         x: position.x,
         y: position.y,
         height: size.height,
         width: size.width,
         fill: lastUsedColor,
-      })
+      }
+      
+      // Add frame-specific properties
+      if (layerType === LayerType.Frame) {
+        insertLayer({
+          ...baseLayer,
+          childIds: [],
+          name: 'Frame',
+          fill: undefined, // Frames typically don't have fill by default
+        })
+      } else {
+        insertLayer(baseLayer)
+      }
 
       setCanvasState({ mode: CanvasMode.None })
     },
