@@ -1,11 +1,12 @@
 import { Canvas } from './_components/canvas'
 
 interface BoardIdPageProps {
-  params: { boardId: string }
+  params: Promise<{ boardId: string }>
 }
 
-const BoardIdPage = ({ params }: BoardIdPageProps) => (
-  <Canvas boardId={params.boardId} />
-)
+const BoardIdPage = async (props: BoardIdPageProps) => {
+  const params = await props.params;
+  return (<Canvas boardId={params.boardId} />);
+}
 
 export default BoardIdPage

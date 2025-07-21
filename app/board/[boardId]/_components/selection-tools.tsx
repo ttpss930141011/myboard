@@ -40,7 +40,7 @@ export const SelectionTools = memo(
       )
       
       return allSameColor ? firstColor : undefined
-    }, [getSelectedLayers, selectedLayers])
+    }, [getSelectedLayers])
 
     if (!selectionBounds) return null
 

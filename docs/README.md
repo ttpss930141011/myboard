@@ -32,7 +32,7 @@ Welcome to the documentation for Personal Miro - a single-user whiteboard applic
 
 ## Technology Stack
 
-- **Frontend**: Next.js 14, React 18, TypeScript
+- **Frontend**: Next.js 15, React 19 RC, TypeScript
 - **State Management**: Zustand with Immer
 - **Database**: PostgreSQL with Prisma ORM
 - **Authentication**: Auth.js v5 (NextAuth) with OAuth providers

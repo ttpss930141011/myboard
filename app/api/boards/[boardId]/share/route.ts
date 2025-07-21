@@ -2,10 +2,8 @@ import { AuthService } from '@/lib/auth/auth-service'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: { boardId: string } }
-) {
+export async function PATCH(request: Request, props: { params: Promise<{ boardId: string }> }) {
+  const params = await props.params;
   try {
     const user = await AuthService.requireAuth()
     
