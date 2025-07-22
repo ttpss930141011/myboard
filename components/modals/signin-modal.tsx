@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Sparkles } from 'lucide-react'
 import { GoogleIcon, GitHubIcon } from '@/components/ui/icons'
+import { EmailSignInForm } from '@/components/auth/email-signin-form'
 
 interface SignInModalProps {
   showSignInModal: boolean
@@ -34,6 +35,7 @@ export function SignInModal({
   setShowSignInModal,
 }: SignInModalProps) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
+  const [emailLoading, setEmailLoading] = useState(false)
   const searchParams = useSearchParams()
   const callbackUrl = searchParams?.get('from') || '/'
 
@@ -72,9 +74,25 @@ export function SignInModal({
           </DialogHeader>
 
           <div className="flex flex-col space-y-4 p-6 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
+            <EmailSignInForm 
+              callbackUrl={callbackUrl}
+              onLoading={setEmailLoading}
+            />
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-300 dark:border-gray-700" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white dark:bg-gray-950 px-2 text-gray-500 dark:text-gray-400">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
             <div className="space-y-3">
               <Button
-                disabled={loadingProvider !== null}
+                disabled={loadingProvider !== null || emailLoading}
                 variant="outline"
                 className={cn(
                   "relative w-full h-12 text-base font-medium",
@@ -87,10 +105,7 @@ export function SignInModal({
                 onClick={() => handleSignIn('google')}
               >
                 {loadingProvider === 'google' ? (
-                  <>
-                    <LoadingSpinner />
-                    <span className="ml-2">Signing in...</span>
-                  </>
+                  <LoadingSpinner />
                 ) : (
                   <>
                     <GoogleIcon className="mr-2 h-5 w-5" />
@@ -100,23 +115,20 @@ export function SignInModal({
               </Button>
 
               <Button
-                disabled={loadingProvider !== null}
+                disabled={loadingProvider !== null || emailLoading}
                 variant="outline"
                 className={cn(
                   "relative w-full h-12 text-base font-medium",
-                  "bg-gray-900 dark:bg-gray-800",
-                  "hover:bg-gray-800 dark:hover:bg-gray-700",
-                  "text-white border-gray-800 dark:border-gray-600",
+                  "bg-gray-800 dark:bg-gray-700",
+                  "hover:bg-gray-700 dark:hover:bg-gray-600",
+                  "text-white border-gray-700 dark:border-gray-600",
                   "transition-all duration-200",
                   loadingProvider === 'github' && "opacity-70"
                 )}
                 onClick={() => handleSignIn('github')}
               >
                 {loadingProvider === 'github' ? (
-                  <>
-                    <LoadingSpinner className="text-white" />
-                    <span className="ml-2">Signing in...</span>
-                  </>
+                  <LoadingSpinner className="text-white" />
                 ) : (
                   <>
                     <GitHubIcon className="mr-2 h-5 w-5" />
