@@ -13,8 +13,8 @@ export const List = () => {
     <ul className="space-y-4">
       <Item
         id={session.user.id}
-        name={session.user.name || 'My Workspace'}
-        imageUrl={session.user.image || '/logo.svg'}
+        name="My Workspace"
+        imageUrl="/logo.svg"
       />
     </ul>
   )

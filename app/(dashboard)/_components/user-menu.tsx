@@ -10,12 +10,28 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useSession } from "next-auth/react"
-import { LogOut, User } from "lucide-react"
+import { LogOut, User, LogIn } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { useSignInModal } from "@/store/use-signin-modal"
+import { toast } from "sonner"
 
 export function UserMenu() {
   const { data: session } = useSession()
+  const { open: openSignInModal } = useSignInModal()
   
-  if (!session?.user) return null
+  if (!session?.user) {
+    return (
+      <Button
+        onClick={openSignInModal}
+        variant="default"
+        size="sm"
+        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+      >
+        <LogIn className="h-4 w-4 mr-2" />
+        Sign in
+      </Button>
+    )
+  }
   
   return (
     <DropdownMenu>
@@ -47,7 +63,14 @@ export function UserMenu() {
           </div>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer">
+        <DropdownMenuItem 
+          className="cursor-pointer"
+          onClick={() => {
+            toast.info("Profile settings coming soon!", {
+              description: "We're working on adding profile management features."
+            })
+          }}
+        >
           <User className="mr-2 h-4 w-4" />
           Profile
         </DropdownMenuItem>
