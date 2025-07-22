@@ -7,8 +7,6 @@ import { Poppins } from 'next/font/google'
 import { LayoutDashboard, Star } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { UserMenu } from './user-menu'
-
 import { cn } from '@/lib/utils'
 
 const font = Poppins({ subsets: ['latin'], weight: ['600'] })
@@ -27,7 +25,6 @@ export const OrgSidebar = () => {
           </span>
         </div>
       </Link>
-      <UserMenu />
       <div className="space-y-1 w-full">
         <Button
           variant={favorites ? 'ghost' : 'secondary'}
