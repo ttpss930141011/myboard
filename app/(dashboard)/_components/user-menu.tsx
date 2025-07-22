@@ -13,11 +13,12 @@ import { useSession } from "next-auth/react"
 import { LogOut, User, LogIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSignInModal } from "@/store/use-signin-modal"
-import { toast } from "sonner"
+import { useProfileModal } from "@/store/use-profile-modal"
 
 export function UserMenu() {
   const { data: session } = useSession()
   const { open: openSignInModal } = useSignInModal()
+  const { open: openProfileModal } = useProfileModal()
   
   if (!session?.user) {
     return (
@@ -65,11 +66,7 @@ export function UserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuItem 
           className="cursor-pointer"
-          onClick={() => {
-            toast.info("Profile settings coming soon!", {
-              description: "We're working on adding profile management features."
-            })
-          }}
+          onClick={openProfileModal}
         >
           <User className="mr-2 h-4 w-4" />
           Profile

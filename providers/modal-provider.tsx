@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 
 import { RenameModal } from '@/components/modals/rename-modal'
 import { SignInModal } from '@/components/modals/signin-modal'
+import { ProfileModal } from '@/components/modals/profile-modal'
 import { useSignInModal } from '@/store/use-signin-modal'
 
 export const ModalProvider = () => {
@@ -20,6 +21,7 @@ export const ModalProvider = () => {
     <>
       <RenameModal />
       <SignInModal showSignInModal={isOpen} setShowSignInModal={close} />
+      <ProfileModal />
     </>
   )
 }
