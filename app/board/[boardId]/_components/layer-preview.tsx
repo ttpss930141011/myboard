@@ -7,6 +7,7 @@ import { Ellipse } from './ellipse'
 import { Rectangle } from './rectangle'
 import { Note } from './note'
 import { Path } from './path'
+import { Frame } from './frame'
 
 import { colorToCss } from '@/lib/utils'
 import { LayerType } from '@/types/canvas'
@@ -72,6 +73,24 @@ export const LayerPreview = memo(
             onPointerDown={onLayerPointerDown}
             selectionColor={selectionColor}
           />
+        )
+      case LayerType.Frame:
+        return (
+          <Frame
+            id={id}
+            layer={layer}
+            onPointerDown={onLayerPointerDown}
+            selectionColor={selectionColor}
+          >
+            {/* Recursively render child layers */}
+            {layer.childIds.map(childId => (
+              <LayerPreview
+                key={childId}
+                id={childId}
+                onLayerPointerDown={onLayerPointerDown}
+              />
+            ))}
+          </Frame>
         )
       default:
         console.warn('Unknown layer type')

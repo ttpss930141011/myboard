@@ -16,6 +16,7 @@ export enum LayerType {
   Path,
   Text,
   Note,
+  Frame,
 }
 
 export type RectangleLayer = {
@@ -69,6 +70,20 @@ export type NoteLayer = {
   value?: string
 }
 
+export type FrameLayer = {
+  type: LayerType.Frame
+  x: number
+  y: number
+  height: number
+  width: number
+  fill?: Color
+  strokeColor?: Color
+  strokeWidth?: number
+  childIds: string[]
+  name?: string
+  locked?: boolean
+}
+
 export type Point = {
   x: number
   y: number
@@ -109,6 +124,7 @@ export type CanvasState =
         | LayerType.Rectangle
         | LayerType.Text
         | LayerType.Note
+        | LayerType.Frame
     }
   | {
       mode: CanvasMode.Pencil
@@ -152,3 +168,4 @@ export type Layer =
   | PathLayer
   | TextLayer
   | NoteLayer
+  | FrameLayer
