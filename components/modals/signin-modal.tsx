@@ -74,6 +74,22 @@ export function SignInModal({
           </DialogHeader>
 
           <div className="flex flex-col space-y-4 p-6 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
+            <EmailSignInForm 
+              callbackUrl={callbackUrl}
+              onLoading={setEmailLoading}
+            />
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-300 dark:border-gray-700" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white dark:bg-gray-950 px-2 text-gray-500 dark:text-gray-400">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
             <div className="space-y-3">
               <Button
                 disabled={loadingProvider !== null || emailLoading}
@@ -121,22 +137,6 @@ export function SignInModal({
                 )}
               </Button>
             </div>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-gray-300 dark:border-gray-700" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white dark:bg-gray-950 px-2 text-gray-500 dark:text-gray-400">
-                  Or continue with email
-                </span>
-              </div>
-            </div>
-
-            <EmailSignInForm 
-              callbackUrl={callbackUrl}
-              onLoading={setEmailLoading}
-            />
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
