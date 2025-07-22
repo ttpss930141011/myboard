@@ -1,5 +1,7 @@
 # MyBoard - Personal Whiteboard & Drawing Tool
 
+![MyBoard Banner](./public/images/myboard-banner.png)
+
 **A single-user Miro clone whiteboard app with local state management using Zustand and PostgreSQL persistence - no real-time collaboration, no Liveblocks/Convex dependencies, just pure personal drawing and creativity.**
 
 Originally forked from [aftabrehan/board-wex](https://github.com/aftabrehan/board-wex), this project has been completely refactored and renamed to MyBoard. It removes expensive SaaS dependencies (Liveblocks & Convex) and has been transformed into a self-hostable personal whiteboard solution.
