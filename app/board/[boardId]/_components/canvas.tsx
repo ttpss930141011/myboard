@@ -151,7 +151,7 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
           ...baseLayer,
           childIds: [],
           name: 'Frame',
-          fill: undefined, // Frames typically don't have fill by default
+          fill: { r: 255, g: 255, b: 255 }, // Default white background for frames
         } as any) // Type assertion needed due to union type
       } else {
         insertLayer(baseLayer)
@@ -385,12 +385,40 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
             // If layer was already selected, drag all selected layers
             setCanvasState({ mode: CanvasMode.Translating, current })
           } else {
-            // If layer wasn't selected, drag only this layer without selecting it
-            setCanvasState({ 
-              mode: CanvasMode.Translating, 
-              current,
-              layerIds: [canvasState.layerId]
-            })
+            // Check if this is an unselected Frame
+            const layer = getLayer(canvasState.layerId)
+            if (layer && layer.type === LayerType.Frame) {
+              // Check if we're starting drag within existing selection bounds
+              if (selectionBounds && selectedLayers.length > 0 && isPointInBounds(canvasState.origin, selectionBounds)) {
+                // We're within selection bounds, move the selected elements instead
+                setCanvasState({ 
+                  mode: CanvasMode.Translating, 
+                  current,
+                  layerIds: selectedLayers
+                })
+              } else {
+                // Unselected Frame: switch to range selection mode
+                setCanvasState({
+                  mode: CanvasMode.SelectionNet,
+                  origin: canvasState.origin,
+                  current,
+                })
+                // Start range selection immediately
+                const ids = findIntersectingLayersWithRectangle(
+                  layerIds,
+                  canvasState.origin,
+                  current
+                )
+                selectLayers(ids)
+              }
+            } else {
+              // Other layers: drag only this layer without selecting it
+              setCanvasState({ 
+                mode: CanvasMode.Translating, 
+                current,
+                layerIds: [canvasState.layerId]
+              })
+            }
           }
         }
       }
@@ -406,6 +434,12 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
       saveHistory,
       setCanvasState,
       setThrottledCamera,
+      getLayer,
+      selectionBounds,
+      selectedLayers,
+      layerIds,
+      findIntersectingLayersWithRectangle,
+      selectLayers,
     ]
   )
 
@@ -499,6 +533,9 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
         if (!canvasState.wasSelected) {
           // Select the layer if it wasn't selected
           selectLayers([canvasState.layerId])
+        } else if (layer && layer.type === LayerType.Frame) {
+          // Frame toggle: unselect if already selected
+          unselectLayers()
         } else if (layer && (layer.type === LayerType.Text || layer.type === LayerType.Note)) {
           // Enter edit mode if clicking on already selected text/note
           setEditingLayer(canvasState.layerId)
@@ -523,6 +560,7 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
       editingLayerId,
       getLayer,
       selectLayers,
+      unselectLayers,
       setEditingLayer,
     ]
   )
