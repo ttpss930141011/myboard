@@ -2,6 +2,8 @@ import { memo } from 'react'
 
 import { colorToCss } from '@/lib/utils'
 import { FrameLayer } from '@/types/canvas'
+import { useCanvasStore } from '@/stores/canvas-store'
+import { useLayerEditing } from '@/hooks/use-layer-editing'
 
 interface FrameProps {
   id: string
@@ -19,10 +21,38 @@ export const Frame = memo(({
   children,
 }: FrameProps) => {
   const { x, y, width, height, fill, strokeColor, strokeWidth, name } = layer
+  const updateLayer = useCanvasStore(state => state.updateLayer)
+  
+  // Check if Frame is currently selected
+  const isSelected = Boolean(selectionColor)
+
+  // 使用高效能編輯 Hook
+  const {
+    isEditing,
+    editValue,
+    inputRef,
+    startEditing,
+    stopEditing,
+    handleKeyDown,
+    handleChange,
+  } = useLayerEditing({
+    id,
+    initialValue: name || 'Frame',
+    onSave: (value) => updateLayer(id, { name: value || 'Frame' }),
+    allowEmpty: false,
+    autoSelect: true,
+  })
 
   return (
     <g transform={`translate(${x}, ${y})`}>
-      {/* Frame background - optional fill */}
+      {/* Frame clip path definition */}
+      <defs>
+        <clipPath id={`frame-clip-${id}`}>
+          <rect x={0} y={0} width={width} height={height} rx={8} ry={8} />
+        </clipPath>
+      </defs>
+      
+      {/* Frame background - 就像其他layer一樣簡單 */}
       <rect
         className="frame-background"
         x={0}
@@ -35,31 +65,52 @@ export const Frame = memo(({
         strokeDasharray="6 3"
         rx={8}
         ry={8}
-        onPointerDown={e => onPointerDown?.(e, id)}
+        onPointerDown={onPointerDown ? (e) => onPointerDown(e, id) : undefined}
         style={{
-          cursor: 'move',
+          cursor: 'default',
           filter: selectionColor ? 'drop-shadow(0 0 0 2px ' + selectionColor + ')' : undefined
         }}
       />
       
       {/* Frame label */}
-      {name && (
-        <foreignObject x={8} y={-20} width={width - 16} height={20}>
-          <div className="flex items-center">
-            <span className="text-xs font-medium text-gray-600 bg-white px-2 py-0.5 rounded truncate">
-              {name}
-            </span>
-          </div>
+      {(name || isEditing) && (
+        <foreignObject 
+          x={8} 
+          y={-24} 
+          width={Math.min(200, width - 16)} 
+          height={24}
+          style={{ pointerEvents: isEditing ? 'auto' : 'none' }}
+        >
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              value={editValue}
+              onChange={handleChange}
+              onBlur={stopEditing}
+              onKeyDown={handleKeyDown}
+              className="bg-white border border-blue-500 rounded px-2 py-0.5 text-xs font-medium text-gray-700 outline-none"
+              style={{ 
+                width: `${Math.max(60, editValue.length * 7 + 20)}px`,
+                maxWidth: '200px',
+                height: '20px'
+              }}
+            />
+          ) : (
+            <div 
+              className="flex items-center h-full"
+              onDoubleClick={startEditing}
+              style={{ pointerEvents: 'auto', cursor: 'text' }}
+            >
+              <span className="text-xs font-medium text-gray-600 bg-white px-2 py-0.5 rounded truncate select-none">
+                {name}
+              </span>
+            </div>
+          )}
         </foreignObject>
       )}
       
       {/* Frame contents clipped to bounds */}
       <g className="frame-contents" clipPath={`url(#frame-clip-${id})`}>
-        <defs>
-          <clipPath id={`frame-clip-${id}`}>
-            <rect x={0} y={0} width={width} height={height} rx={8} ry={8} />
-          </clipPath>
-        </defs>
         {children}
       </g>
     </g>

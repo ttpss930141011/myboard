@@ -142,7 +142,13 @@ export const useCanvasStore = create<CanvasStore>()(
           const id = nanoid()
           const newLayer = { ...layer, id } as Layer
           state.layers.set(id, newLayer)
-          state.layerIds.push(id)
+          
+          // Smart layer ordering: Frames go to back, others to front
+          if (layer.type === LayerType.Frame) {
+            state.layerIds.unshift(id) // Add to beginning (back)
+          } else {
+            state.layerIds.push(id) // Add to end (front)
+          }
           
           // Select the new layer
           state.selectedLayers = [id]
@@ -218,7 +224,23 @@ export const useCanvasStore = create<CanvasStore>()(
       
       translateLayers: (ids, offset) => {
         set(state => {
+          // Collect all layers to translate (including Frame children)
+          const layersToTranslate = new Set<string>()
+          
           ids.forEach(id => {
+            layersToTranslate.add(id)
+            
+            // If this is a Frame, also include its children
+            const layer = state.layers.get(id)
+            if (layer && layer.type === LayerType.Frame) {
+              layer.childIds.forEach(childId => {
+                layersToTranslate.add(childId)
+              })
+            }
+          })
+          
+          // Translate all collected layers
+          layersToTranslate.forEach(id => {
             const layer = state.layers.get(id)
             if (layer) {
               state.layers.set(id, {
@@ -419,7 +441,20 @@ export const useCanvasStore = create<CanvasStore>()(
         // Use for...of for potential early optimization in future
         for (const id of layerIds) {
           const layer = state.layers.get(id)
-          if (layer && isIntersecting(layer, rect)) {
+          if (!layer || !isIntersecting(layer, rect)) {
+            continue
+          }
+          
+          // Frame dual-state logic: only include frames that are already selected
+          if (layer.type === LayerType.Frame) {
+            const isFrameSelected = state.selectedLayers.includes(id)
+            if (isFrameSelected) {
+              // Selected frames participate in range selection
+              intersecting.push(id)
+            }
+            // Unselected frames are ignored, allowing selection to pass through to children
+          } else {
+            // Non-frame layers are always included if intersecting
             intersecting.push(id)
           }
         }
