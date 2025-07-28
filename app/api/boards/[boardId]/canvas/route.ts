@@ -5,13 +5,26 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request, props: { params: Promise<{ boardId: string }> }) {
   const params = await props.params;
   try {
+    const user = await AuthService.requireAuth()
+    
+    // Check if user has permission to view this board
     const board = await prisma.board.findUnique({
       where: { id: params.boardId },
-      select: { canvasData: true }
+      select: { 
+        canvasData: true,
+        userId: true,
+        isPublic: true,
+        shareId: true
+      }
     })
     
     if (!board) {
       return new Response('Not found', { status: 404 })
+    }
+    
+    // Verify user owns the board or board is accessible
+    if (board.userId !== user.id && !board.isPublic) {
+      return new Response('Forbidden', { status: 403 })
     }
     
     // Return canvas data or empty canvas
