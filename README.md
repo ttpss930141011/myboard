@@ -216,6 +216,7 @@ myboard/
 │   ├── board/[boardId]/   # Board canvas page
 │   └── api/               # API routes
 ├── components/            # Reusable UI components
+├── docs/                  # Component design documentation
 ├── hooks/                 # Custom React hooks
 ├── lib/                   # Utility functions
 ├── prisma/               # Database schema and migrations
@@ -223,6 +224,11 @@ myboard/
 ├── stores/               # Zustand state stores
 └── types/                # TypeScript type definitions
 ```
+
+## 📚 Component Documentation
+
+### Core Canvas Components
+- **[Frame Component](./docs/FRAME_COMPONENT_DESIGN.md)** - Visual grouping and hierarchical organization with Miro-inspired auto-adoption
 
 ## 🔧 Development
 
