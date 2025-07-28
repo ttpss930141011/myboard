@@ -270,9 +270,9 @@ export const shouldBeFrameChild = (element: Layer, frame: Layer): boolean => {
  */
 export const findBestParentFrame = (
   element: Layer,
-  frames: Layer[]
-): Layer | null => {
-  let bestFrame: Layer | null = null
+  frames: (Layer & { id: string })[]
+): (Layer & { id: string }) | null => {
+  let bestFrame: (Layer & { id: string }) | null = null
   let maxOverlap = 0.5  // minimum threshold 50%
   
   for (const frame of frames) {

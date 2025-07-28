@@ -35,6 +35,12 @@ interface HistoryState {
   future: HistoryEntry[]
 }
 
+interface FrameCache {
+  frameIds: Set<string>
+  timestamp: number
+  version: number  // Invalidate when layers change
+}
+
 interface CanvasStore {
   // Canvas state
   layers: Map<string, Layer>
@@ -42,6 +48,10 @@ interface CanvasStore {
   
   // History state
   history: HistoryState
+  
+  // Performance cache
+  frameCache: FrameCache | null
+  cacheVersion: number  // Increment when layers/layerIds change
   
   // Local state
   camera: Camera
@@ -101,8 +111,12 @@ interface CanvasStore {
   adoptElement: (frameId: string, elementId: string) => void
   releaseElement: (elementId: string) => void
   updateElementParentship: (elementId: string) => void
-  getFrameLayers: () => Layer[]
+  getFrameLayers: () => (Layer & { id: string })[]
+  getTopLevelLayerIds: () => string[]
   getElementParent: (elementId: string) => string | null
+  
+  // Performance optimization methods
+  invalidateFrameCache: () => void
 }
 
 // Helper function to check intersection
@@ -136,6 +150,8 @@ export const useCanvasStore = create<CanvasStore>()(
       layers: new Map(),
       layerIds: [],
       history: { past: [], future: [] },
+      frameCache: null,
+      cacheVersion: 0,
       camera: { x: 0, y: 0, zoom: 1 },
       selectedLayers: [],
       canvasState: { mode: CanvasMode.None },
@@ -153,6 +169,9 @@ export const useCanvasStore = create<CanvasStore>()(
           // Smart layer ordering: Frames go to back, others to front
           if (layer.type === LayerType.Frame) {
             state.layerIds.unshift(id) // Add to beginning (back)
+            // Invalidate frame cache when frame is added
+            state.frameCache = null
+            state.cacheVersion++
           } else {
             state.layerIds.push(id) // Add to end (front)
           }
@@ -179,6 +198,13 @@ export const useCanvasStore = create<CanvasStore>()(
       deleteLayer: (id) => {
         get().saveHistory()
         set(state => {
+          const layer = state.layers.get(id)
+          if (layer?.type === LayerType.Frame) {
+            // Invalidate frame cache when frame is deleted
+            state.frameCache = null
+            state.cacheVersion++
+          }
+          
           state.layers.delete(id)
           state.layerIds = state.layerIds.filter(layerId => layerId !== id)
           state.selectedLayers = state.selectedLayers.filter(layerId => layerId !== id)
@@ -189,9 +215,21 @@ export const useCanvasStore = create<CanvasStore>()(
       deleteLayers: (ids) => {
         get().saveHistory()
         set(state => {
+          let hasFrameDeleted = false
           ids.forEach(id => {
+            const layer = state.layers.get(id)
+            if (layer?.type === LayerType.Frame) {
+              hasFrameDeleted = true
+            }
             state.layers.delete(id)
           })
+          
+          if (hasFrameDeleted) {
+            // Invalidate frame cache when any frame is deleted
+            state.frameCache = null
+            state.cacheVersion++
+          }
+          
           state.layerIds = state.layerIds.filter(id => !ids.includes(id))
           state.selectedLayers = state.selectedLayers.filter(id => !ids.includes(id))
         })
@@ -534,9 +572,66 @@ export const useCanvasStore = create<CanvasStore>()(
       
       getFrameLayers: () => {
         const state = get()
-        return state.layerIds
-          .map(id => state.layers.get(id))
-          .filter(layer => layer && layer.type === LayerType.Frame) as Layer[]
+        const now = Date.now()
+        const CACHE_TTL = 5000 // 5 seconds cache
+        
+        // Check if cache is valid
+        if (state.frameCache && 
+            state.frameCache.version === state.cacheVersion &&
+            now - state.frameCache.timestamp < CACHE_TTL) {
+          // Return cached frame layers with id
+          return Array.from(state.frameCache.frameIds)
+            .map(id => {
+              const layer = state.layers.get(id)
+              return layer ? { ...layer, id } : null
+            })
+            .filter((layer): layer is Layer & { id: string } => 
+              layer !== null && layer.type === LayerType.Frame
+            )
+        }
+        
+        // Rebuild cache
+        const frameIds = new Set<string>()
+        for (const id of state.layerIds) {
+          const layer = state.layers.get(id)
+          if (layer?.type === LayerType.Frame) {
+            frameIds.add(id)
+          }
+        }
+        
+        // Update cache
+        set(draft => {
+          draft.frameCache = {
+            frameIds,
+            timestamp: now,
+            version: state.cacheVersion
+          }
+        })
+        
+        // Return frame layers with id
+        return Array.from(frameIds)
+          .map(id => {
+            const layer = state.layers.get(id)
+            return layer ? { ...layer, id } : null
+          })
+          .filter((layer): layer is Layer & { id: string } => 
+            layer !== null && layer.type === LayerType.Frame
+          )
+      },
+      
+      getTopLevelLayerIds: () => {
+        const state = get()
+        const allChildIds = new Set<string>()
+        
+        // Collect all child IDs from frames
+        state.layers.forEach(layer => {
+          if (layer.type === LayerType.Frame && layer.childIds) {
+            layer.childIds.forEach(childId => allChildIds.add(childId))
+          }
+        })
+        
+        // Return only layers that are not children of any frame
+        return state.layerIds.filter(id => !allChildIds.has(id))
       },
       
       getElementParent: (elementId) => {
@@ -547,6 +642,14 @@ export const useCanvasStore = create<CanvasStore>()(
           }
         }
         return null
+      },
+      
+      // Performance optimization methods
+      invalidateFrameCache: () => {
+        set(state => {
+          state.frameCache = null
+          state.cacheVersion++
+        })
       }
     }))
   )
