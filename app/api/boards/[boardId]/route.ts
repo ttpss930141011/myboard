@@ -1,4 +1,4 @@
-import { AuthService } from '@/lib/auth/auth-service'
+import { requireAuth } from '@/lib/auth/guards'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { sanitizeUserInput, isValidTextContent } from '@/lib/security/validation'
@@ -31,7 +31,7 @@ export async function GET(request: Request, props: { params: Promise<{ boardId: 
 export async function PATCH(request: Request, props: { params: Promise<{ boardId: string }> }) {
   const params = await props.params;
   try {
-    const user = await AuthService.requireAuth()
+    const user = await requireAuth()
     
     const { title } = await request.json()
     
@@ -77,7 +77,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ boardId
 export async function DELETE(request: Request, props: { params: Promise<{ boardId: string }> }) {
   const params = await props.params;
   try {
-    const user = await AuthService.requireAuth()
+    const user = await requireAuth()
     
     // Verify the user owns the board
     const board = await prisma.board.findUnique({

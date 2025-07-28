@@ -27,7 +27,9 @@
       "Bash(mkdir:*)",
       "Bash(git fetch:*)",
       "Bash(git worktree:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "mcp__git__git_create_branch",
+      "mcp__git__git_checkout"
     ],
     "deny": []
   }

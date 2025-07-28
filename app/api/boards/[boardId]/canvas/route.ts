@@ -1,4 +1,4 @@
-import { AuthService } from '@/lib/auth/auth-service'
+import { requireAuth } from '@/lib/auth/guards'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { validateAndSanitizeCanvasData } from '@/lib/security/canvas-validation'
@@ -7,7 +7,7 @@ import { applyAPISecurityMiddleware, addSecurityHeaders } from '@/lib/security/a
 export async function GET(request: Request, props: { params: Promise<{ boardId: string }> }) {
   const params = await props.params;
   try {
-    const user = await AuthService.requireAuth()
+    const user = await requireAuth()
     
     // Check if user has permission to view this board
     const board = await prisma.board.findUnique({
@@ -49,7 +49,7 @@ export async function PUT(request: Request, props: { params: Promise<{ boardId: 
   }
   
   try {
-    const user = await AuthService.requireAuth()
+    const user = await requireAuth()
     
     const rawCanvasData = await request.json()
     

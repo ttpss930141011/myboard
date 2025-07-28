@@ -1,11 +1,11 @@
-import { AuthService } from '@/lib/auth/auth-service'
+import { requireAuth } from '@/lib/auth/guards'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request, props: { params: Promise<{ boardId: string }> }) {
   const params = await props.params;
   try {
-    const user = await AuthService.requireAuth()
+    const user = await requireAuth()
     
     // Verify board exists and belongs to user
     const board = await prisma.board.findFirst({
@@ -51,7 +51,7 @@ export async function POST(request: Request, props: { params: Promise<{ boardId:
 export async function DELETE(request: Request, props: { params: Promise<{ boardId: string }> }) {
   const params = await props.params;
   try {
-    const user = await AuthService.requireAuth()
+    const user = await requireAuth()
     
     // Verify board exists and belongs to user
     const board = await prisma.board.findFirst({

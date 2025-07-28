@@ -1,4 +1,4 @@
-import { AuthService } from '@/lib/auth/auth-service'
+import { requireAuth } from '@/lib/auth/guards'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { sanitizeUserInput, isValidTextContent } from '@/lib/security/validation'
@@ -6,7 +6,7 @@ import { applyAPISecurityMiddleware, addSecurityHeaders } from '@/lib/security/a
 
 export async function GET(request: Request) {
   try {
-    const user = await AuthService.requireAuth()
+    const user = await requireAuth()
     
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
   }
   
   try {
-    const user = await AuthService.requireAuth()
+    const user = await requireAuth()
     
     const { title } = await request.json()
     
