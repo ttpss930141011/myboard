@@ -100,3 +100,71 @@ export const isValidTextContent = (text: string | null | undefined, maxLength: n
   const trimmed = text.trim()
   return trimmed.length > 0 && trimmed.length <= maxLength
 }
+
+/**
+ * Sanitizes and validates layer text content
+ * Implements defense-in-depth for user-generated content
+ * @param text - Raw text input from user
+ * @param maxLength - Maximum allowed length
+ * @returns Sanitized and validated text
+ */
+export const sanitizeLayerText = (text: string | null | undefined, maxLength: number = 1000): string => {
+  if (!text || typeof text !== 'string') {
+    return ''
+  }
+  
+  // First sanitize to prevent XSS
+  let sanitized = sanitizeUserInput(text)
+  
+  // Then validate length and format
+  if (sanitized.length > maxLength) {
+    sanitized = sanitized.substring(0, maxLength)
+  }
+  
+  return sanitized
+}
+
+/**
+ * Validates layer name/title input
+ * @param name - Layer name to validate
+ * @returns boolean indicating if name is valid
+ */
+export const isValidLayerName = (name: string | null | undefined): boolean => {
+  if (!name || typeof name !== 'string') {
+    return false
+  }
+  
+  const trimmed = name.trim()
+  
+  // Layer names: 1-100 characters, no HTML tags
+  if (trimmed.length === 0 || trimmed.length > 100) {
+    return false
+  }
+  
+  // Check for HTML tags (basic XSS prevention)
+  if (/<[^>]*>/g.test(trimmed)) {
+    return false
+  }
+  
+  return true
+}
+
+/**
+ * Sanitizes layer name input
+ * @param name - Raw name input
+ * @returns Sanitized layer name
+ */
+export const sanitizeLayerName = (name: string | null | undefined): string => {
+  if (!name || typeof name !== 'string') {
+    return ''
+  }
+  
+  let sanitized = sanitizeUserInput(name.trim())
+  
+  // Limit length for layer names
+  if (sanitized.length > 100) {
+    sanitized = sanitized.substring(0, 100)
+  }
+  
+  return sanitized
+}

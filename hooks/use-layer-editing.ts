@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useCanvasStore } from '@/stores/canvas-store'
+import { sanitizeLayerText } from '@/lib/security/validation'
 
 interface UseLayerEditingOptions {
   id: string
@@ -71,7 +72,10 @@ export const useLayerEditing = ({
     if (!allowEmpty && trimmedValue === '' && onDelete) {
       onDelete()
     } else {
-      onSave(allowEmpty ? editValue : (trimmedValue || initialValue))
+      // Sanitize input before saving to prevent XSS
+      const valueToSave = allowEmpty ? editValue : (trimmedValue || initialValue)
+      const sanitizedValue = sanitizeLayerText(valueToSave, 1000)
+      onSave(sanitizedValue)
     }
   }, [editValue, allowEmpty, initialValue, onSave, onDelete, setEditingLayer])
 

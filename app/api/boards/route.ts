@@ -1,6 +1,7 @@
 import { AuthService } from '@/lib/auth/auth-service'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { sanitizeUserInput, isValidTextContent } from '@/lib/security/validation'
 
 export async function GET(request: Request) {
   try {
@@ -83,9 +84,12 @@ export async function POST(request: Request) {
       return new Response('Title is required', { status: 400 })
     }
     
-    if (title.length > 60) {
-      return new Response('Title cannot be longer than 60 characters', { status: 400 })
+    // Validate and sanitize title input
+    if (!isValidTextContent(title, 60)) {
+      return new Response('Title must be 1-60 characters', { status: 400 })
     }
+    
+    const sanitizedTitle = sanitizeUserInput(title.trim())
     
     const images = [
       '/placeholders/1.svg',
@@ -104,9 +108,9 @@ export async function POST(request: Request) {
     
     const board = await prisma.board.create({
       data: {
-        title: title.trim(),
+        title: sanitizedTitle,
         userId: user.id,
-        authorName: user.name || 'User',
+        authorName: sanitizeUserInput(user.name || 'User'),
         imageUrl: randomImage,
         canvasData: {
           layers: {},

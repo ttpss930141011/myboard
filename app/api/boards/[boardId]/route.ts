@@ -1,6 +1,7 @@
 import { AuthService } from '@/lib/auth/auth-service'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { sanitizeUserInput, isValidTextContent } from '@/lib/security/validation'
 
 export async function GET(request: Request, props: { params: Promise<{ boardId: string }> }) {
   const params = await props.params;
@@ -38,9 +39,12 @@ export async function PATCH(request: Request, props: { params: Promise<{ boardId
       return new Response('Title is required', { status: 400 })
     }
     
-    if (title.length > 60) {
-      return new Response('Title cannot be longer than 60 characters', { status: 400 })
+    // Validate and sanitize title input
+    if (!isValidTextContent(title, 60)) {
+      return new Response('Title must be 1-60 characters', { status: 400 })
     }
+    
+    const sanitizedTitle = sanitizeUserInput(title.trim())
     
     // Verify the user owns the board
     const board = await prisma.board.findUnique({
@@ -53,7 +57,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ boardId
     
     const updatedBoard = await prisma.board.update({
       where: { id: params.boardId },
-      data: { title: title.trim() }
+      data: { title: sanitizedTitle }
     })
     
     return NextResponse.json({
