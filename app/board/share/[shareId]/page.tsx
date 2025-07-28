@@ -1,6 +1,6 @@
 import { Canvas } from "@/app/board/[boardId]/_components/canvas"
-import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
+import { validatePublicBoard } from "@/lib/security/validation"
 
 interface SharePageProps {
   params: Promise<{ shareId: string }>
@@ -8,13 +8,10 @@ interface SharePageProps {
 
 export default async function SharePage(props: SharePageProps) {
   const params = await props.params;
-  const board = await prisma.board.findUnique({
-    where: { 
-      shareId: params.shareId,
-      isPublic: true 
-    }
-  })
-
+  
+  // Use centralized security validation
+  const board = await validatePublicBoard(params.shareId)
+  
   if (!board) {
     notFound()
   }
