@@ -44,19 +44,19 @@ export const Frame = memo(({
   })
 
   return (
-    <g transform={`translate(${x}, ${y})`}>
+    <g>
       {/* Frame clip path definition */}
       <defs>
         <clipPath id={`frame-clip-${id}`}>
-          <rect x={0} y={0} width={width} height={height} rx={8} ry={8} />
+          <rect x={x} y={y} width={width} height={height} rx={8} ry={8} />
         </clipPath>
       </defs>
       
-      {/* Frame background - 就像其他layer一樣簡單 */}
+      {/* Frame background - 使用絕對座標 */}
       <rect
         className="frame-background"
-        x={0}
-        y={0}
+        x={x}
+        y={y}
         width={width}
         height={height}
         fill={fill ? colorToCss(fill) : 'transparent'}
@@ -75,8 +75,8 @@ export const Frame = memo(({
       {/* Frame label */}
       {(name || isEditing) && (
         <foreignObject 
-          x={8} 
-          y={-24} 
+          x={x + 8} 
+          y={y - 24} 
           width={Math.min(200, width - 16)} 
           height={24}
           style={{ pointerEvents: isEditing ? 'auto' : 'none' }}
@@ -109,7 +109,7 @@ export const Frame = memo(({
         </foreignObject>
       )}
       
-      {/* Frame contents clipped to bounds */}
+      {/* Frame contents clipped to bounds - children使用絕對座標 */}
       <g className="frame-contents" clipPath={`url(#frame-clip-${id})`}>
         {children}
       </g>

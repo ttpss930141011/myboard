@@ -16,7 +16,7 @@ import {
   Side,
   PathLayer
 } from '@/types/canvas'
-import { penPointsToPathLayer } from '@/lib/utils'
+import { penPointsToPathLayer, findBestParentFrame } from '@/lib/utils'
 
 // Enable Immer MapSet plugin
 enableMapSet()
@@ -54,7 +54,7 @@ interface CanvasStore {
   editingLayerId: string | null
   
   // Layer operations
-  insertLayer: (layer: Omit<Layer, 'id'>) => void
+  insertLayer: (layer: Omit<Layer, 'id'>) => string
   updateLayer: (id: string, updates: Partial<Layer>) => void
   deleteLayer: (id: string) => void
   deleteLayers: (ids: string[]) => void
@@ -96,6 +96,13 @@ interface CanvasStore {
   getLayer: (id: string) => Layer | undefined
   getSelectedLayers: () => Layer[]
   findIntersectingLayersWithRectangle: (layerIds: string[], origin: Point, current: Point) => string[]
+  
+  // Frame parent-child relationship operations
+  adoptElement: (frameId: string, elementId: string) => void
+  releaseElement: (elementId: string) => void
+  updateElementParentship: (elementId: string) => void
+  getFrameLayers: () => Layer[]
+  getElementParent: (elementId: string) => string | null
 }
 
 // Helper function to check intersection
@@ -138,8 +145,8 @@ export const useCanvasStore = create<CanvasStore>()(
       
       insertLayer: (layer) => {
         get().saveHistory()
+        const id = nanoid()
         set(state => {
-          const id = nanoid()
           const newLayer = { ...layer, id } as Layer
           state.layers.set(id, newLayer)
           
@@ -155,6 +162,7 @@ export const useCanvasStore = create<CanvasStore>()(
         })
         // Auto-save
         get().saveToDatabase()
+        return id
       },
       
       updateLayer: (id, updates) => {
@@ -230,9 +238,9 @@ export const useCanvasStore = create<CanvasStore>()(
           ids.forEach(id => {
             layersToTranslate.add(id)
             
-            // If this is a Frame, also include its children
+            // If this is a Frame, also include its children (since they use absolute coordinates)
             const layer = state.layers.get(id)
-            if (layer && layer.type === LayerType.Frame) {
+            if (layer && layer.type === LayerType.Frame && layer.childIds) {
               layer.childIds.forEach(childId => {
                 layersToTranslate.add(childId)
               })
@@ -312,8 +320,8 @@ export const useCanvasStore = create<CanvasStore>()(
         }
         
         get().saveHistory()
+        const id = nanoid()
         set(state => {
-          const id = nanoid()
           const layer = penPointsToPathLayer(pencilDraft, currentPenColor)
           
           state.layers.set(id, layer)
@@ -321,6 +329,17 @@ export const useCanvasStore = create<CanvasStore>()(
           state.pencilDraft = null
           state.selectedLayers = [id]
         })
+        
+        // Check if path should be adopted by a frame (using Miro's 50% overlap rule)
+        const layer = get().layers.get(id)
+        if (layer) {
+          const frames = get().getFrameLayers()
+          const bestParent = findBestParentFrame(layer, frames)
+          
+          if (bestParent) {
+            get().adoptElement(bestParent.id, id)
+          }
+        }
         
         get().saveToDatabase()
       },
@@ -460,6 +479,74 @@ export const useCanvasStore = create<CanvasStore>()(
         }
         
         return intersecting
+      },
+      
+      // Frame parent-child relationship operations
+      adoptElement: (frameId, elementId) => {
+        set(state => {
+          // Remove from any existing parent frame
+          state.layers.forEach(layer => {
+            if (layer.type === LayerType.Frame && layer.childIds && layer.childIds.includes(elementId)) {
+              layer.childIds = layer.childIds.filter(id => id !== elementId)
+            }
+          })
+          
+          // Add to new parent frame (no coordinate conversion needed now)
+          const frame = state.layers.get(frameId)
+          if (frame && frame.type === LayerType.Frame) {
+            if (!frame.childIds) {
+              frame.childIds = []
+            }
+            if (!frame.childIds.includes(elementId)) {
+              frame.childIds = [...frame.childIds, elementId]
+            }
+          }
+        })
+        get().saveToDatabase()
+      },
+      
+      releaseElement: (elementId) => {
+        set(state => {
+          // Remove from all parent frames
+          state.layers.forEach(layer => {
+            if (layer.type === LayerType.Frame && layer.childIds && layer.childIds.includes(elementId)) {
+              layer.childIds = layer.childIds.filter(id => id !== elementId)
+            }
+          })
+        })
+        get().saveToDatabase()
+      },
+      
+      updateElementParentship: (elementId) => {
+        const element = get().layers.get(elementId)
+        const frames = get().getFrameLayers()
+        
+        if (!element || element.type === LayerType.Frame) return
+        
+        const bestParent = findBestParentFrame(element, frames)
+        const currentParent = get().getElementParent(elementId)
+        
+        if (bestParent?.id !== currentParent) {
+          if (currentParent) get().releaseElement(elementId)
+          if (bestParent) get().adoptElement(bestParent.id, elementId)
+        }
+      },
+      
+      getFrameLayers: () => {
+        const state = get()
+        return state.layerIds
+          .map(id => state.layers.get(id))
+          .filter(layer => layer && layer.type === LayerType.Frame) as Layer[]
+      },
+      
+      getElementParent: (elementId) => {
+        const state = get()
+        for (const [frameId, layer] of state.layers) {
+          if (layer.type === LayerType.Frame && layer.childIds && layer.childIds.includes(elementId)) {
+            return frameId
+          }
+        }
+        return null
       }
     }))
   )

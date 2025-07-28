@@ -230,3 +230,60 @@ export const isPointInBounds = (point: Point, bounds: XYWH): boolean => {
     point.y <= bounds.y + bounds.height
   )
 }
+
+/**
+ * Calculate intersection area between two rectangles
+ */
+export const calculateIntersectionArea = (rect1: XYWH, rect2: XYWH): number => {
+  const left = Math.max(rect1.x, rect2.x)
+  const right = Math.min(rect1.x + rect1.width, rect2.x + rect2.width)
+  const top = Math.max(rect1.y, rect2.y)
+  const bottom = Math.min(rect1.y + rect1.height, rect2.y + rect2.height)
+  
+  if (left >= right || top >= bottom) {
+    return 0
+  }
+  
+  return (right - left) * (bottom - top)
+}
+
+/**
+ * Calculate element overlap ratio with frame (0-1)
+ */
+export const calculateOverlapRatio = (element: Layer, frame: Layer): number => {
+  const elementArea = element.width * element.height
+  if (elementArea === 0) return 0
+  
+  const overlapArea = calculateIntersectionArea(element, frame)
+  return overlapArea / elementArea
+}
+
+/**
+ * Check if element should be frame child (>50% overlap)
+ */
+export const shouldBeFrameChild = (element: Layer, frame: Layer): boolean => {
+  return calculateOverlapRatio(element, frame) > 0.5
+}
+
+/**
+ * Find best parent frame for element (highest overlap >50%)
+ */
+export const findBestParentFrame = (
+  element: Layer,
+  frames: Layer[]
+): Layer | null => {
+  let bestFrame: Layer | null = null
+  let maxOverlap = 0.5  // minimum threshold 50%
+  
+  for (const frame of frames) {
+    if (frame.type !== LayerType.Frame) continue
+    
+    const overlap = calculateOverlapRatio(element, frame)
+    if (overlap > maxOverlap) {
+      maxOverlap = overlap
+      bestFrame = frame
+    }
+  }
+  
+  return bestFrame
+}

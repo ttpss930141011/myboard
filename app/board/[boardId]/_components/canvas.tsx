@@ -96,6 +96,10 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
     saveHistory,
     getLayer,
     setEditingLayer,
+    adoptElement,
+    getFrameLayers,
+    updateElementParentship,
+    getTopLevelLayerIds,
   } = useCanvasStore()
   
   const { undo, redo, canUndo, canRedo } = useCanvasHistory()
@@ -147,19 +151,30 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
       
       // Add frame-specific properties
       if (layerType === LayerType.Frame) {
-        insertLayer({
+        const frameLayer = {
           ...baseLayer,
           childIds: [],
           name: 'Frame',
           fill: { r: 255, g: 255, b: 255 }, // Default white background for frames
-        } as any) // Type assertion needed due to union type
+        } as any // Type assertion needed due to union type
+        insertLayer(frameLayer)
       } else {
-        insertLayer(baseLayer)
+        const newLayerId = insertLayer(baseLayer)
+        
+        // Check if created inside a frame and adopt if so
+        const frames = getFrameLayers()
+        const containingFrame = frames.find(frame => 
+          isPointInBounds(position, frame)
+        )
+        
+        if (containingFrame) {
+          adoptElement(containingFrame.id, newLayerId)
+        }
       }
 
       setCanvasState({ mode: CanvasMode.None })
     },
-    [insertLayer, lastUsedColor, layerIds.length, setCanvasState]
+    [insertLayer, lastUsedColor, layerIds.length, setCanvasState, getFrameLayers, adoptElement]
   )
 
   const translateSelectedLayers = useCallback(
@@ -215,6 +230,12 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
   const updateSelectionNetThrottled = useThrottledCallback(
     updateSelectionNet,
     16 // ~60fps
+  )
+
+  // Throttled version for smooth Frame + children movement
+  const translateSelectedLayersThrottled = useThrottledCallback(
+    translateSelectedLayers,
+    16 // ~60fps, same as selection net
   )
 
   const startDrawing = useCallback(
@@ -359,7 +380,7 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
       } else if (canvasState.mode === CanvasMode.SelectionNet) {
         updateSelectionNetThrottled(current, canvasState.origin)
       } else if (canvasState.mode === CanvasMode.Translating) {
-        translateSelectedLayers(current)
+        translateSelectedLayersThrottled(current)
       } else if (canvasState.mode === CanvasMode.Resizing) {
         resizeSelectedLayer(current)
       } else if (canvasState.mode === CanvasMode.Pencil) {
@@ -427,7 +448,7 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
       camera,
       canvasState,
       resizeSelectedLayer,
-      translateSelectedLayers,
+      translateSelectedLayersThrottled,
       continueDrawingHandler,
       updateSelectionNetThrottled,
       startMultiSelection,
@@ -517,6 +538,23 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
       } else if (canvasState.mode === CanvasMode.Inserting) {
         insertLayerWithPosition(canvasState.layerType, point)
       } else if (canvasState.mode === CanvasMode.Translating) {
+        // Check parent-child relationships after moving elements
+        const movedLayers = canvasState.layerIds || selectedLayers
+        const hasFrames = movedLayers.some(id => {
+          const layer = getLayer(id)
+          return layer?.type === LayerType.Frame
+        })
+        
+        // Only update parentship if no frames were moved (avoid accidental adoption)
+        if (!hasFrames) {
+          movedLayers.forEach(layerId => {
+            const layer = getLayer(layerId)
+            if (layer && layer.type !== LayerType.Frame) {
+              updateElementParentship(layerId)
+            }
+          })
+        }
+        
         // End translation mode
         setCanvasState({
           mode: CanvasMode.None,
@@ -562,6 +600,8 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
       selectLayers,
       unselectLayers,
       setEditingLayer,
+      selectedLayers,
+      updateElementParentship,
     ]
   )
 
