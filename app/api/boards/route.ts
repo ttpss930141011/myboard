@@ -2,6 +2,7 @@ import { AuthService } from '@/lib/auth/auth-service'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { sanitizeUserInput, isValidTextContent } from '@/lib/security/validation'
+import { applyAPISecurityMiddleware, addSecurityHeaders } from '@/lib/security/api-security'
 
 export async function GET(request: Request) {
   try {
@@ -75,6 +76,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // Apply CSRF protection and security middleware
+  const securityCheck = applyAPISecurityMiddleware(request as any)
+  if (securityCheck) {
+    return securityCheck
+  }
+  
   try {
     const user = await AuthService.requireAuth()
     
@@ -119,7 +126,7 @@ export async function POST(request: Request) {
       }
     })
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       _id: board.id,
       _creationTime: board.createdAt.getTime(),
       title: board.title,
@@ -127,6 +134,8 @@ export async function POST(request: Request) {
       authorName: board.authorName,
       imageUrl: board.imageUrl
     })
+    
+    return addSecurityHeaders(response)
   } catch (error) {
     console.error('Error creating board:', error)
     return new Response('Internal Server Error', { status: 500 })

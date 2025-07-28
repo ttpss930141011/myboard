@@ -2,6 +2,7 @@ import { AuthService } from '@/lib/auth/auth-service'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { validateAndSanitizeCanvasData } from '@/lib/security/canvas-validation'
+import { applyAPISecurityMiddleware, addSecurityHeaders } from '@/lib/security/api-security'
 
 export async function GET(request: Request, props: { params: Promise<{ boardId: string }> }) {
   const params = await props.params;
@@ -40,6 +41,13 @@ export async function GET(request: Request, props: { params: Promise<{ boardId: 
 
 export async function PUT(request: Request, props: { params: Promise<{ boardId: string }> }) {
   const params = await props.params;
+  
+  // Apply CSRF protection and security middleware
+  const securityCheck = applyAPISecurityMiddleware(request as any)
+  if (securityCheck) {
+    return securityCheck
+  }
+  
   try {
     const user = await AuthService.requireAuth()
     
@@ -69,7 +77,8 @@ export async function PUT(request: Request, props: { params: Promise<{ boardId: 
       data: { canvasData: sanitizedCanvasData }
     })
     
-    return NextResponse.json({ success: true })
+    const response = NextResponse.json({ success: true })
+    return addSecurityHeaders(response)
   } catch (error) {
     console.error('Error updating canvas:', error)
     return new Response('Internal Server Error', { status: 500 })
