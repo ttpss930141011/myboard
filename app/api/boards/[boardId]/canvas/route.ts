@@ -1,6 +1,7 @@
 import { AuthService } from '@/lib/auth/auth-service'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { validateAndSanitizeCanvasData } from '@/lib/security/canvas-validation'
 
 export async function GET(request: Request, props: { params: Promise<{ boardId: string }> }) {
   const params = await props.params;
@@ -42,7 +43,16 @@ export async function PUT(request: Request, props: { params: Promise<{ boardId: 
   try {
     const user = await AuthService.requireAuth()
     
-    const canvasData = await request.json()
+    const rawCanvasData = await request.json()
+    
+    // Validate and sanitize canvas data structure
+    let sanitizedCanvasData
+    try {
+      sanitizedCanvasData = validateAndSanitizeCanvasData(rawCanvasData)
+    } catch (validationError) {
+      console.error('Canvas data validation failed:', validationError)
+      return new Response('Invalid canvas data format', { status: 400 })
+    }
     
     // Verify the user owns the board
     const board = await prisma.board.findUnique({
@@ -56,7 +66,7 @@ export async function PUT(request: Request, props: { params: Promise<{ boardId: 
     
     await prisma.board.update({
       where: { id: params.boardId },
-      data: { canvasData }
+      data: { canvasData: sanitizedCanvasData }
     })
     
     return NextResponse.json({ success: true })
