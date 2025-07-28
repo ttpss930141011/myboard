@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NoteLayer } from '@/types/canvas'
 import { cn, colorToCss, getContrastingTextColor } from '@/lib/utils'
 import { useCanvasStore } from '@/stores/canvas-store'
+import { useLayerEditing } from '@/hooks/use-layer-editing'
 
 const font = Kalam({ subsets: ['latin'], weight: ['400'] })
 
@@ -79,18 +80,28 @@ export const Note = ({
 }: NoteProps) => {
   const { x, y, width, height, fill, value } = layer
   const updateLayer = useCanvasStore(state => state.updateLayer)
-  const editingLayerId = useCanvasStore(state => state.editingLayerId)
-  const setEditingLayer = useCanvasStore(state => state.setEditingLayer)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [fontSize, setFontSize] = useState(24)
-  const isEditing = editingLayerId === id
-  const [editValue, setEditValue] = useState(value || '')
 
-  // Update edit value when layer value changes
-  useEffect(() => {
-    setEditValue(value || '')
-  }, [value])
+  // 使用 useLayerEditing Hook，注意 Note 組件允許空值
+  const {
+    isEditing,
+    editValue,
+    textareaRef,
+    startEditing,
+    stopEditing,
+    handleKeyDown,
+    handleChange,
+  } = useLayerEditing({
+    id,
+    initialValue: value || '',
+    onSave: (newValue) => {
+      // Note 組件允許空值，不會自動刪除
+      updateLayer(id, { value: newValue })
+    },
+    allowEmpty: true, // Note 組件的特殊需求：允許空值
+    autoSelect: false, // Note 通常不需要自動選中所有文本
+  })
 
   // Auto-resize text to fit container
   useEffect(() => {
@@ -132,29 +143,10 @@ export const Note = ({
   }, [width, height, value, editValue])
 
 
+  // Note 組件特有的雙擊編輯處理
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!isEditing) {
-      setEditingLayer(id)
-    }
-  }
-
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setEditValue(e.target.value)
-  }
-
-  const handleTextareaBlur = () => {
-    setEditingLayer(null)
-    updateLayer(id, { value: editValue })
-  }
-
-  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      setEditingLayer(null)
-      setEditValue(value || '')
-    }
-    // Let Enter key work naturally for line breaks
+    startEditing(e)
   }
 
   return (
@@ -183,9 +175,9 @@ export const Note = ({
           <textarea
             ref={textareaRef}
             value={editValue}
-            onChange={handleTextareaChange}
-            onBlur={handleTextareaBlur}
-            onKeyDown={handleTextareaKeyDown}
+            onChange={handleChange}
+            onBlur={stopEditing}
+            onKeyDown={handleKeyDown}
             className={cn(
               'resize-none bg-transparent border-none outline-none text-center w-full h-full overflow-y-hidden',
               'focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-transparent',
@@ -199,7 +191,6 @@ export const Note = ({
               margin: 0,
               caretColor: fill ? getContrastingTextColor(fill) : '#000',
             }}
-            autoFocus
           />
         ) : (
           <div

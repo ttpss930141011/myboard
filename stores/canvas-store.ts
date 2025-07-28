@@ -16,7 +16,7 @@ import {
   Side,
   PathLayer
 } from '@/types/canvas'
-import { penPointsToPathLayer } from '@/lib/utils'
+import { penPointsToPathLayer, findBestParentFrame } from '@/lib/utils'
 
 // Enable Immer MapSet plugin
 enableMapSet()
@@ -35,6 +35,12 @@ interface HistoryState {
   future: HistoryEntry[]
 }
 
+interface FrameCache {
+  frameIds: Set<string>
+  timestamp: number
+  version: number  // Invalidate when layers change
+}
+
 interface CanvasStore {
   // Canvas state
   layers: Map<string, Layer>
@@ -42,6 +48,14 @@ interface CanvasStore {
   
   // History state
   history: HistoryState
+  
+  // Performance cache
+  frameCache: FrameCache | null
+  cacheVersion: number  // Increment when layers/layerIds change
+  
+  // Performance indexes for O(1) parent-child lookups
+  parentIndex: Map<string, string>    // childId -> parentId
+  childrenIndex: Map<string, Set<string>>  // parentId -> Set<childId>
   
   // Local state
   camera: Camera
@@ -54,7 +68,7 @@ interface CanvasStore {
   editingLayerId: string | null
   
   // Layer operations
-  insertLayer: (layer: Omit<Layer, 'id'>) => void
+  insertLayer: (layer: Omit<Layer, 'id'>) => string
   updateLayer: (id: string, updates: Partial<Layer>) => void
   deleteLayer: (id: string) => void
   deleteLayers: (ids: string[]) => void
@@ -96,6 +110,20 @@ interface CanvasStore {
   getLayer: (id: string) => Layer | undefined
   getSelectedLayers: () => Layer[]
   findIntersectingLayersWithRectangle: (layerIds: string[], origin: Point, current: Point) => string[]
+  
+  // Frame parent-child relationship operations
+  adoptElement: (frameId: string, elementId: string) => void
+  releaseElement: (elementId: string) => void
+  updateElementParentship: (elementId: string) => void
+  getFrameLayers: () => (Layer & { id: string })[]
+  getTopLevelLayerIds: () => string[]
+  getElementParent: (elementId: string) => string | null
+  
+  // Performance optimization methods
+  invalidateFrameCache: () => void
+  rebuildParentIndex: () => void
+  updateParentChildRelation: (parentId: string, childId: string) => void
+  removeParentChildRelation: (childId: string) => void
 }
 
 // Helper function to check intersection
@@ -129,6 +157,10 @@ export const useCanvasStore = create<CanvasStore>()(
       layers: new Map(),
       layerIds: [],
       history: { past: [], future: [] },
+      frameCache: null,
+      cacheVersion: 0,
+      parentIndex: new Map(),
+      childrenIndex: new Map(),
       camera: { x: 0, y: 0, zoom: 1 },
       selectedLayers: [],
       canvasState: { mode: CanvasMode.None },
@@ -138,17 +170,32 @@ export const useCanvasStore = create<CanvasStore>()(
       
       insertLayer: (layer) => {
         get().saveHistory()
+        const id = nanoid()
         set(state => {
-          const id = nanoid()
           const newLayer = { ...layer, id } as Layer
           state.layers.set(id, newLayer)
-          state.layerIds.push(id)
+          
+          // Smart layer ordering: Frames go to back, others to front
+          if (layer.type === LayerType.Frame) {
+            state.layerIds.unshift(id) // Add to beginning (back)
+            // Invalidate frame cache when frame is added
+            state.frameCache = null
+            state.cacheVersion++
+            
+            // Initialize frame in children index (empty set)
+            if (newLayer.type === LayerType.Frame) {
+              state.childrenIndex.set(id, new Set())
+            }
+          } else {
+            state.layerIds.push(id) // Add to end (front)
+          }
           
           // Select the new layer
           state.selectedLayers = [id]
         })
         // Auto-save
         get().saveToDatabase()
+        return id
       },
       
       updateLayer: (id, updates) => {
@@ -165,6 +212,24 @@ export const useCanvasStore = create<CanvasStore>()(
       deleteLayer: (id) => {
         get().saveHistory()
         set(state => {
+          const layer = state.layers.get(id)
+          if (layer?.type === LayerType.Frame) {
+            // Invalidate frame cache when frame is deleted
+            state.frameCache = null
+            state.cacheVersion++
+            
+            // Clean up parent-child relationships for Frame
+            if (layer.childIds) {
+              layer.childIds.forEach(childId => {
+                state.parentIndex.delete(childId)
+              })
+            }
+            state.childrenIndex.delete(id)
+          } else {
+            // Clean up parent-child relationship if this was a child
+            get().removeParentChildRelation(id)
+          }
+          
           state.layers.delete(id)
           state.layerIds = state.layerIds.filter(layerId => layerId !== id)
           state.selectedLayers = state.selectedLayers.filter(layerId => layerId !== id)
@@ -175,9 +240,48 @@ export const useCanvasStore = create<CanvasStore>()(
       deleteLayers: (ids) => {
         get().saveHistory()
         set(state => {
+          let hasFrameDeleted = false
           ids.forEach(id => {
+            const layer = state.layers.get(id)
+            if (layer?.type === LayerType.Frame) {
+              hasFrameDeleted = true
+              
+              // Clean up parent-child relationships for Frame
+              if (layer.childIds) {
+                layer.childIds.forEach(childId => {
+                  state.parentIndex.delete(childId)
+                })
+              }
+              state.childrenIndex.delete(id)
+            } else {
+              // Clean up parent-child relationship if this was a child
+              const parentId = state.parentIndex.get(id)
+              if (parentId) {
+                state.parentIndex.delete(id)
+                const siblings = state.childrenIndex.get(parentId)
+                if (siblings) {
+                  siblings.delete(id)
+                  if (siblings.size === 0) {
+                    state.childrenIndex.delete(parentId)
+                  }
+                }
+                
+                // Also remove from Frame's childIds array
+                const parentLayer = state.layers.get(parentId)
+                if (parentLayer && parentLayer.type === LayerType.Frame && parentLayer.childIds) {
+                  parentLayer.childIds = parentLayer.childIds.filter(childId => childId !== id)
+                }
+              }
+            }
             state.layers.delete(id)
           })
+          
+          if (hasFrameDeleted) {
+            // Invalidate frame cache when any frame is deleted
+            state.frameCache = null
+            state.cacheVersion++
+          }
+          
           state.layerIds = state.layerIds.filter(id => !ids.includes(id))
           state.selectedLayers = state.selectedLayers.filter(id => !ids.includes(id))
         })
@@ -218,7 +322,23 @@ export const useCanvasStore = create<CanvasStore>()(
       
       translateLayers: (ids, offset) => {
         set(state => {
+          // Collect all layers to translate (including Frame children)
+          const layersToTranslate = new Set<string>()
+          
           ids.forEach(id => {
+            layersToTranslate.add(id)
+            
+            // If this is a Frame, also include its children (since they use absolute coordinates)
+            const layer = state.layers.get(id)
+            if (layer && layer.type === LayerType.Frame && layer.childIds) {
+              layer.childIds.forEach(childId => {
+                layersToTranslate.add(childId)
+              })
+            }
+          })
+          
+          // Translate all collected layers
+          layersToTranslate.forEach(id => {
             const layer = state.layers.get(id)
             if (layer) {
               state.layers.set(id, {
@@ -290,8 +410,8 @@ export const useCanvasStore = create<CanvasStore>()(
         }
         
         get().saveHistory()
+        const id = nanoid()
         set(state => {
-          const id = nanoid()
           const layer = penPointsToPathLayer(pencilDraft, currentPenColor)
           
           state.layers.set(id, layer)
@@ -299,6 +419,17 @@ export const useCanvasStore = create<CanvasStore>()(
           state.pencilDraft = null
           state.selectedLayers = [id]
         })
+        
+        // Check if path should be adopted by a frame (using Miro's 50% overlap rule)
+        const layer = get().layers.get(id)
+        if (layer) {
+          const frames = get().getFrameLayers()
+          const bestParent = findBestParentFrame(layer, frames)
+          
+          if (bestParent) {
+            get().adoptElement(bestParent.id, id)
+          }
+        }
         
         get().saveToDatabase()
       },
@@ -335,6 +466,9 @@ export const useCanvasStore = create<CanvasStore>()(
       loadFromDatabase: (data) => set(state => {
         state.layers = new Map(Object.entries(data.layers || {}))
         state.layerIds = data.layerIds || []
+        
+        // Rebuild parent index after loading data to ensure consistency
+        setTimeout(() => get().rebuildParentIndex(), 0)
       }),
       
       saveHistory: () => set(state => {
@@ -419,12 +553,244 @@ export const useCanvasStore = create<CanvasStore>()(
         // Use for...of for potential early optimization in future
         for (const id of layerIds) {
           const layer = state.layers.get(id)
-          if (layer && isIntersecting(layer, rect)) {
+          if (!layer || !isIntersecting(layer, rect)) {
+            continue
+          }
+          
+          // Frame dual-state logic: only include frames that are already selected
+          if (layer.type === LayerType.Frame) {
+            const isFrameSelected = state.selectedLayers.includes(id)
+            if (isFrameSelected) {
+              // Selected frames participate in range selection
+              intersecting.push(id)
+            }
+            // Unselected frames are ignored, allowing selection to pass through to children
+          } else {
+            // Non-frame layers are always included if intersecting
             intersecting.push(id)
           }
         }
         
         return intersecting
+      },
+      
+      // Frame parent-child relationship operations
+      adoptElement: (frameId, elementId) => {
+        set(state => {
+          // Remove from existing parent using index (O(1) instead of O(n))
+          const currentParent = state.parentIndex.get(elementId)
+          if (currentParent) {
+            const parentLayer = state.layers.get(currentParent)
+            if (parentLayer && parentLayer.type === LayerType.Frame && parentLayer.childIds) {
+              parentLayer.childIds = parentLayer.childIds.filter(id => id !== elementId)
+            }
+            
+            // Update children index
+            const siblings = state.childrenIndex.get(currentParent)
+            if (siblings) {
+              siblings.delete(elementId)
+              if (siblings.size === 0) {
+                state.childrenIndex.delete(currentParent)
+              }
+            }
+          }
+          
+          // Add to new parent frame
+          const frame = state.layers.get(frameId)
+          if (frame && frame.type === LayerType.Frame) {
+            if (!frame.childIds) {
+              frame.childIds = []
+            }
+            if (!frame.childIds.includes(elementId)) {
+              frame.childIds = [...frame.childIds, elementId]
+              
+              // Update indexes
+              state.parentIndex.set(elementId, frameId)
+              if (!state.childrenIndex.has(frameId)) {
+                state.childrenIndex.set(frameId, new Set())
+              }
+              state.childrenIndex.get(frameId)!.add(elementId)
+            }
+          }
+        })
+        get().saveToDatabase()
+      },
+      
+      releaseElement: (elementId) => {
+        set(state => {
+          // Remove from parent using index (O(1) instead of O(n))
+          const parentId = state.parentIndex.get(elementId)
+          if (parentId) {
+            const parentLayer = state.layers.get(parentId)
+            if (parentLayer && parentLayer.type === LayerType.Frame && parentLayer.childIds) {
+              parentLayer.childIds = parentLayer.childIds.filter(id => id !== elementId)
+            }
+            
+            // Update indexes
+            state.parentIndex.delete(elementId)
+            const siblings = state.childrenIndex.get(parentId)
+            if (siblings) {
+              siblings.delete(elementId)
+              if (siblings.size === 0) {
+                state.childrenIndex.delete(parentId)
+              }
+            }
+          }
+        })
+        get().saveToDatabase()
+      },
+      
+      updateElementParentship: (elementId) => {
+        const element = get().layers.get(elementId)
+        const frames = get().getFrameLayers()
+        
+        if (!element || element.type === LayerType.Frame) return
+        
+        const bestParent = findBestParentFrame(element, frames)
+        const currentParent = get().getElementParent(elementId)
+        
+        if (bestParent?.id !== currentParent) {
+          if (currentParent) get().releaseElement(elementId)
+          if (bestParent) get().adoptElement(bestParent.id, elementId)
+        }
+      },
+      
+      getFrameLayers: () => {
+        const state = get()
+        const now = Date.now()
+        const CACHE_TTL = 5000 // 5 seconds cache
+        
+        // Check if cache is valid
+        if (state.frameCache && 
+            state.frameCache.version === state.cacheVersion &&
+            now - state.frameCache.timestamp < CACHE_TTL) {
+          // Return cached frame layers with id
+          return Array.from(state.frameCache.frameIds)
+            .map(id => {
+              const layer = state.layers.get(id)
+              return layer ? { ...layer, id } : null
+            })
+            .filter((layer): layer is Layer & { id: string } => 
+              layer !== null && layer.type === LayerType.Frame
+            )
+        }
+        
+        // Rebuild cache
+        const frameIds = new Set<string>()
+        for (const id of state.layerIds) {
+          const layer = state.layers.get(id)
+          if (layer?.type === LayerType.Frame) {
+            frameIds.add(id)
+          }
+        }
+        
+        // Update cache
+        set(draft => {
+          draft.frameCache = {
+            frameIds,
+            timestamp: now,
+            version: state.cacheVersion
+          }
+        })
+        
+        // Return frame layers with id
+        return Array.from(frameIds)
+          .map(id => {
+            const layer = state.layers.get(id)
+            return layer ? { ...layer, id } : null
+          })
+          .filter((layer): layer is Layer & { id: string } => 
+            layer !== null && layer.type === LayerType.Frame
+          )
+      },
+      
+      getTopLevelLayerIds: () => {
+        const state = get()
+        const allChildIds = new Set<string>()
+        
+        // Collect all child IDs from frames
+        state.layers.forEach(layer => {
+          if (layer.type === LayerType.Frame && layer.childIds) {
+            layer.childIds.forEach(childId => allChildIds.add(childId))
+          }
+        })
+        
+        // Return only layers that are not children of any frame
+        return state.layerIds.filter(id => !allChildIds.has(id))
+      },
+      
+      getElementParent: (elementId) => {
+        const state = get()
+        // O(1) lookup using index instead of O(n) iteration
+        return state.parentIndex.get(elementId) || null
+      },
+      
+      // Performance optimization methods
+      invalidateFrameCache: () => {
+        set(state => {
+          state.frameCache = null
+          state.cacheVersion++
+        })
+      },
+      
+      rebuildParentIndex: () => {
+        set(state => {
+          // Clear existing indexes
+          state.parentIndex.clear()
+          state.childrenIndex.clear()
+          
+          // Rebuild from layer data
+          state.layers.forEach((layer, layerId) => {
+            if (layer.type === LayerType.Frame && layer.childIds) {
+              layer.childIds.forEach(childId => {
+                state.parentIndex.set(childId, layerId)
+                if (!state.childrenIndex.has(layerId)) {
+                  state.childrenIndex.set(layerId, new Set())
+                }
+                state.childrenIndex.get(layerId)!.add(childId)
+              })
+            }
+          })
+        })
+      },
+      
+      updateParentChildRelation: (parentId, childId) => {
+        set(state => {
+          // Remove from old parent if exists
+          const oldParent = state.parentIndex.get(childId)
+          if (oldParent && oldParent !== parentId) {
+            const siblings = state.childrenIndex.get(oldParent)
+            if (siblings) {
+              siblings.delete(childId)
+              if (siblings.size === 0) {
+                state.childrenIndex.delete(oldParent)
+              }
+            }
+          }
+          
+          // Add to new parent
+          state.parentIndex.set(childId, parentId)
+          if (!state.childrenIndex.has(parentId)) {
+            state.childrenIndex.set(parentId, new Set())
+          }
+          state.childrenIndex.get(parentId)!.add(childId)
+        })
+      },
+      
+      removeParentChildRelation: (childId) => {
+        set(state => {
+          const parentId = state.parentIndex.get(childId)
+          if (parentId) {
+            state.parentIndex.delete(childId)
+            const siblings = state.childrenIndex.get(parentId)
+            if (siblings) {
+              siblings.delete(childId)
+              if (siblings.size === 0) {
+                state.childrenIndex.delete(parentId)
+              }
+            }
+          }
+        })
       }
     }))
   )

@@ -32,12 +32,23 @@ export const SelectionTools = memo(
       const layers = getSelectedLayers()
       if (layers.length === 0) return undefined
       
-      const firstColor = layers[0].fill
-      const allSameColor = layers.every(layer => 
-        layer.fill.r === firstColor.r &&
-        layer.fill.g === firstColor.g &&
-        layer.fill.b === firstColor.b
-      )
+      // For single selection, show the layer's color (even if undefined)
+      if (layers.length === 1) {
+        return layers[0].fill
+      }
+      
+      // For multiple selection, find common color
+      const firstLayer = layers[0]
+      const firstColor = firstLayer.fill
+      
+      // Check if all selected layers have the same color
+      const allSameColor = layers.every(layer => {
+        if (!layer.fill && !firstColor) return true // Both undefined
+        if (!layer.fill || !firstColor) return false // One undefined
+        return layer.fill.r === firstColor.r &&
+               layer.fill.g === firstColor.g &&
+               layer.fill.b === firstColor.b
+      })
       
       return allSameColor ? firstColor : undefined
     }, [getSelectedLayers])

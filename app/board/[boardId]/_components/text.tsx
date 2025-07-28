@@ -1,9 +1,10 @@
 import { Kalam } from 'next/font/google'
-import { useState, useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 
 import { TextLayer } from '@/types/canvas'
 import { cn, colorToCss } from '@/lib/utils'
 import { useCanvasStore } from '@/stores/canvas-store'
+import { useLayerEditing } from '@/hooks/use-layer-editing'
 
 const font = Kalam({ subsets: ['latin'], weight: ['400'] })
 
@@ -80,18 +81,34 @@ export const Text = ({
   const { x, y, width, height, fill, value } = layer
   const updateLayer = useCanvasStore(state => state.updateLayer)
   const deleteLayer = useCanvasStore(state => state.deleteLayer)
-  const editingLayerId = useCanvasStore(state => state.editingLayerId)
-  const setEditingLayer = useCanvasStore(state => state.setEditingLayer)
-  const isEditing = editingLayerId === id
-  const [editValue, setEditValue] = useState(value || '')
   const [fontSize, setFontSize] = useState(24)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Update edit value when layer value changes
-  useEffect(() => {
-    setEditValue(value || '')
-  }, [value])
+  // 使用 useLayerEditing Hook，配置 Text 組件的特殊需求
+  const {
+    isEditing,
+    editValue,
+    textareaRef,
+    startEditing,
+    stopEditing,
+    handleKeyDown: baseHandleKeyDown,
+    handleChange,
+  } = useLayerEditing({
+    id,
+    initialValue: value || '',
+    onSave: (newValue) => {
+      // Text 組件的保存邏輯：如果內容為空則刪除
+      const trimmedValue = newValue.trim()
+      if (trimmedValue === '') {
+        deleteLayer(id)
+      } else {
+        updateLayer(id, { value: newValue })
+      }
+    },
+    onDelete: () => deleteLayer(id),
+    allowEmpty: false, // Text 組件不允許空值
+    autoSelect: true,
+  })
 
   // Auto-resize text to fit container
   useEffect(() => {
@@ -133,45 +150,19 @@ export const Text = ({
     containerRef.current.removeChild(measureElement)
   }, [width, height, value, editValue])
 
-
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!isEditing) {
-      setEditingLayer(id)
-    }
-  }
-
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setEditValue(e.target.value)
-  }
-
-  const handleTextareaBlur = () => {
-    setEditingLayer(null)
+  // Text 組件的特殊鍵盤處理（基於 Hook 的處理器）
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // 首先執行基礎鍵盤處理（包含 Escape 邏輯）
+    baseHandleKeyDown(e)
     
-    // Auto-delete empty text layers (following Miro's pattern)
-    const trimmedValue = editValue.trim()
-    if (trimmedValue === '') {
-      // Use deleteLayer from store to handle deletion properly (with history)
-      deleteLayer(id)
-    } else {
-      updateLayer(id, { value: editValue })
-    }
-  }
-
-  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Text 組件特殊邏輯：Escape 時如果原始值為空，則刪除圖層
     if (e.key === 'Escape') {
-      e.preventDefault()
-      setEditingLayer(null)
-      
-      // Also check for empty text when escaping
       const originalValue = value || ''
       if (originalValue.trim() === '') {
         deleteLayer(id)
-      } else {
-        setEditValue(originalValue)
       }
     }
-    // Let Enter key work naturally for line breaks (same as Note)
+    // Enter 鍵自然換行（與 Note 組件相同）
   }
 
   return (
@@ -194,14 +185,14 @@ export const Text = ({
         ref={containerRef}
         className="h-full w-full flex items-center justify-center p-2 relative overflow-hidden"
       >
-        {/* Conditionally render textarea or div based on editing state */}
+        {/* 根據編輯狀態條件渲染 textarea 或 div */}
         {isEditing ? (
           <textarea
             ref={textareaRef}
             value={editValue}
-            onChange={handleTextareaChange}
-            onBlur={handleTextareaBlur}
-            onKeyDown={handleTextareaKeyDown}
+            onChange={handleChange}
+            onBlur={stopEditing}
+            onKeyDown={handleKeyDown}
             className={cn(
               'resize-none bg-transparent border-none outline-none text-center w-full h-full drop-shadow-md overflow-y-hidden',
               'focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-transparent',
@@ -215,11 +206,10 @@ export const Text = ({
               margin: 0,
               caretColor: fill ? colorToCss(fill) : '#000',
             }}
-            autoFocus
           />
         ) : (
           <div
-            onDoubleClick={handleDoubleClick}
+            onDoubleClick={startEditing}
             className={cn(
               'text-center w-full h-full flex items-center justify-center overflow-hidden cursor-text drop-shadow-md',
               font.className

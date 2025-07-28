@@ -1,5 +1,6 @@
 import {
   Circle,
+  Frame,
   MousePointer2,
   Pencil,
   Redo2,
@@ -102,6 +103,20 @@ export const Toolbar = ({
         isActive={
           canvasState.mode === CanvasMode.Inserting &&
           canvasState.layerType === LayerType.Ellipse
+        }
+      />
+      <ToolButton
+        label="Frame"
+        icon={Frame}
+        onClick={() =>
+          setCanvasState({
+            mode: CanvasMode.Inserting,
+            layerType: LayerType.Frame,
+          })
+        }
+        isActive={
+          canvasState.mode === CanvasMode.Inserting &&
+          canvasState.layerType === LayerType.Frame
         }
       />
       <ToolButton

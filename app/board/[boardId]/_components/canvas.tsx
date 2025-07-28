@@ -96,6 +96,10 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
     saveHistory,
     getLayer,
     setEditingLayer,
+    adoptElement,
+    getFrameLayers,
+    updateElementParentship,
+    getTopLevelLayerIds,
   } = useCanvasStore()
   
   const { undo, redo, canUndo, canRedo } = useCanvasHistory()
@@ -118,7 +122,8 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
         | LayerType.Ellipse
         | LayerType.Rectangle
         | LayerType.Text
-        | LayerType.Note,
+        | LayerType.Note
+        | LayerType.Frame,
       position: Point
     ) => {
       if (layerIds.length >= MAX_LAYERS) {
@@ -130,22 +135,46 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
         [LayerType.Rectangle]: { width: 100, height: 100 },
         [LayerType.Ellipse]: { width: 100, height: 100 },
         [LayerType.Text]: { width: 100, height: 100 },
+        [LayerType.Frame]: { width: 400, height: 300 },
       }
       
       const size = defaultSizes[layerType] || { width: 100, height: 100 }
       
-      insertLayer({
+      const baseLayer = {
         type: layerType,
         x: position.x,
         y: position.y,
         height: size.height,
         width: size.width,
         fill: lastUsedColor,
-      })
+      }
+      
+      // Add frame-specific properties
+      if (layerType === LayerType.Frame) {
+        const frameLayer = {
+          ...baseLayer,
+          childIds: [],
+          name: 'Frame',
+          fill: { r: 255, g: 255, b: 255 }, // Default white background for frames
+        } as any // Type assertion needed due to union type
+        insertLayer(frameLayer)
+      } else {
+        const newLayerId = insertLayer(baseLayer)
+        
+        // Check if created inside a frame and adopt if so
+        const frames = getFrameLayers()
+        const containingFrame = frames.find(frame => 
+          isPointInBounds(position, frame)
+        )
+        
+        if (containingFrame) {
+          adoptElement(containingFrame.id, newLayerId)
+        }
+      }
 
       setCanvasState({ mode: CanvasMode.None })
     },
-    [insertLayer, lastUsedColor, layerIds.length, setCanvasState]
+    [insertLayer, lastUsedColor, layerIds.length, setCanvasState, getFrameLayers, adoptElement]
   )
 
   const translateSelectedLayers = useCallback(
@@ -201,6 +230,12 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
   const updateSelectionNetThrottled = useThrottledCallback(
     updateSelectionNet,
     16 // ~60fps
+  )
+
+  // Throttled version for smooth Frame + children movement
+  const translateSelectedLayersThrottled = useThrottledCallback(
+    translateSelectedLayers,
+    16 // ~60fps, same as selection net
   )
 
   const startDrawing = useCallback(
@@ -345,7 +380,7 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
       } else if (canvasState.mode === CanvasMode.SelectionNet) {
         updateSelectionNetThrottled(current, canvasState.origin)
       } else if (canvasState.mode === CanvasMode.Translating) {
-        translateSelectedLayers(current)
+        translateSelectedLayersThrottled(current)
       } else if (canvasState.mode === CanvasMode.Resizing) {
         resizeSelectedLayer(current)
       } else if (canvasState.mode === CanvasMode.Pencil) {
@@ -371,12 +406,40 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
             // If layer was already selected, drag all selected layers
             setCanvasState({ mode: CanvasMode.Translating, current })
           } else {
-            // If layer wasn't selected, drag only this layer without selecting it
-            setCanvasState({ 
-              mode: CanvasMode.Translating, 
-              current,
-              layerIds: [canvasState.layerId]
-            })
+            // Check if this is an unselected Frame
+            const layer = getLayer(canvasState.layerId)
+            if (layer && layer.type === LayerType.Frame) {
+              // Check if we're starting drag within existing selection bounds
+              if (selectionBounds && selectedLayers.length > 0 && isPointInBounds(canvasState.origin, selectionBounds)) {
+                // We're within selection bounds, move the selected elements instead
+                setCanvasState({ 
+                  mode: CanvasMode.Translating, 
+                  current,
+                  layerIds: selectedLayers
+                })
+              } else {
+                // Unselected Frame: switch to range selection mode
+                setCanvasState({
+                  mode: CanvasMode.SelectionNet,
+                  origin: canvasState.origin,
+                  current,
+                })
+                // Start range selection immediately
+                const ids = findIntersectingLayersWithRectangle(
+                  layerIds,
+                  canvasState.origin,
+                  current
+                )
+                selectLayers(ids)
+              }
+            } else {
+              // Other layers: drag only this layer without selecting it
+              setCanvasState({ 
+                mode: CanvasMode.Translating, 
+                current,
+                layerIds: [canvasState.layerId]
+              })
+            }
           }
         }
       }
@@ -385,13 +448,19 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
       camera,
       canvasState,
       resizeSelectedLayer,
-      translateSelectedLayers,
+      translateSelectedLayersThrottled,
       continueDrawingHandler,
       updateSelectionNetThrottled,
       startMultiSelection,
       saveHistory,
       setCanvasState,
       setThrottledCamera,
+      getLayer,
+      selectionBounds,
+      selectedLayers,
+      layerIds,
+      findIntersectingLayersWithRectangle,
+      selectLayers,
     ]
   )
 
@@ -469,6 +538,23 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
       } else if (canvasState.mode === CanvasMode.Inserting) {
         insertLayerWithPosition(canvasState.layerType, point)
       } else if (canvasState.mode === CanvasMode.Translating) {
+        // Check parent-child relationships after moving elements
+        const movedLayers = canvasState.layerIds || selectedLayers
+        const hasFrames = movedLayers.some(id => {
+          const layer = getLayer(id)
+          return layer?.type === LayerType.Frame
+        })
+        
+        // Only update parentship if no frames were moved (avoid accidental adoption)
+        if (!hasFrames) {
+          movedLayers.forEach(layerId => {
+            const layer = getLayer(layerId)
+            if (layer && layer.type !== LayerType.Frame) {
+              updateElementParentship(layerId)
+            }
+          })
+        }
+        
         // End translation mode
         setCanvasState({
           mode: CanvasMode.None,
@@ -485,6 +571,9 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
         if (!canvasState.wasSelected) {
           // Select the layer if it wasn't selected
           selectLayers([canvasState.layerId])
+        } else if (layer && layer.type === LayerType.Frame) {
+          // Frame toggle: unselect if already selected
+          unselectLayers()
         } else if (layer && (layer.type === LayerType.Text || layer.type === LayerType.Note)) {
           // Enter edit mode if clicking on already selected text/note
           setEditingLayer(canvasState.layerId)
@@ -509,7 +598,10 @@ export const Canvas = ({ boardId, readonly = false }: CanvasProps) => {
       editingLayerId,
       getLayer,
       selectLayers,
+      unselectLayers,
       setEditingLayer,
+      selectedLayers,
+      updateElementParentship,
     ]
   )
 

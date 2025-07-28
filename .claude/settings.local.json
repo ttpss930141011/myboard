@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npm run build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm run lint)",
+      "Bash(git checkout:*)",
+      "Bash(git reset:*)",
+      "Bash(git push:*)",
+      "Bash(where gh)",
+      "Bash(git restore:*)",
+      "Bash(rm:*)",
+      "WebFetch(domain:authjs.dev)",
+      "Bash(npm run type-check:*)",
+      "mcp__time__get_current_time",
+      "Bash(npx shadcn-ui:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(git diff:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git stash:*)",
+      "Bash(git rebase:*)",
+      "Bash(gh.exe pr create:*)",
+      "Bash(cmd:*)",
+      "Bash(mkdir:*)",
+      "Bash(git fetch:*)",
+      "Bash(git worktree:*)",
+      "Bash(find:*)"
+    ],
+    "deny": []
+  }
+}
