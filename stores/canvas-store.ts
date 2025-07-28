@@ -53,6 +53,10 @@ interface CanvasStore {
   frameCache: FrameCache | null
   cacheVersion: number  // Increment when layers/layerIds change
   
+  // Performance indexes for O(1) parent-child lookups
+  parentIndex: Map<string, string>    // childId -> parentId
+  childrenIndex: Map<string, Set<string>>  // parentId -> Set<childId>
+  
   // Local state
   camera: Camera
   selectedLayers: string[]
@@ -117,6 +121,9 @@ interface CanvasStore {
   
   // Performance optimization methods
   invalidateFrameCache: () => void
+  rebuildParentIndex: () => void
+  updateParentChildRelation: (parentId: string, childId: string) => void
+  removeParentChildRelation: (childId: string) => void
 }
 
 // Helper function to check intersection
@@ -152,6 +159,8 @@ export const useCanvasStore = create<CanvasStore>()(
       history: { past: [], future: [] },
       frameCache: null,
       cacheVersion: 0,
+      parentIndex: new Map(),
+      childrenIndex: new Map(),
       camera: { x: 0, y: 0, zoom: 1 },
       selectedLayers: [],
       canvasState: { mode: CanvasMode.None },
@@ -172,6 +181,11 @@ export const useCanvasStore = create<CanvasStore>()(
             // Invalidate frame cache when frame is added
             state.frameCache = null
             state.cacheVersion++
+            
+            // Initialize frame in children index (empty set)
+            if (newLayer.type === LayerType.Frame) {
+              state.childrenIndex.set(id, new Set())
+            }
           } else {
             state.layerIds.push(id) // Add to end (front)
           }
@@ -203,6 +217,17 @@ export const useCanvasStore = create<CanvasStore>()(
             // Invalidate frame cache when frame is deleted
             state.frameCache = null
             state.cacheVersion++
+            
+            // Clean up parent-child relationships for Frame
+            if (layer.childIds) {
+              layer.childIds.forEach(childId => {
+                state.parentIndex.delete(childId)
+              })
+            }
+            state.childrenIndex.delete(id)
+          } else {
+            // Clean up parent-child relationship if this was a child
+            get().removeParentChildRelation(id)
           }
           
           state.layers.delete(id)
@@ -220,6 +245,33 @@ export const useCanvasStore = create<CanvasStore>()(
             const layer = state.layers.get(id)
             if (layer?.type === LayerType.Frame) {
               hasFrameDeleted = true
+              
+              // Clean up parent-child relationships for Frame
+              if (layer.childIds) {
+                layer.childIds.forEach(childId => {
+                  state.parentIndex.delete(childId)
+                })
+              }
+              state.childrenIndex.delete(id)
+            } else {
+              // Clean up parent-child relationship if this was a child
+              const parentId = state.parentIndex.get(id)
+              if (parentId) {
+                state.parentIndex.delete(id)
+                const siblings = state.childrenIndex.get(parentId)
+                if (siblings) {
+                  siblings.delete(id)
+                  if (siblings.size === 0) {
+                    state.childrenIndex.delete(parentId)
+                  }
+                }
+                
+                // Also remove from Frame's childIds array
+                const parentLayer = state.layers.get(parentId)
+                if (parentLayer && parentLayer.type === LayerType.Frame && parentLayer.childIds) {
+                  parentLayer.childIds = parentLayer.childIds.filter(childId => childId !== id)
+                }
+              }
             }
             state.layers.delete(id)
           })
@@ -414,6 +466,9 @@ export const useCanvasStore = create<CanvasStore>()(
       loadFromDatabase: (data) => set(state => {
         state.layers = new Map(Object.entries(data.layers || {}))
         state.layerIds = data.layerIds || []
+        
+        // Rebuild parent index after loading data to ensure consistency
+        setTimeout(() => get().rebuildParentIndex(), 0)
       }),
       
       saveHistory: () => set(state => {
@@ -522,14 +577,25 @@ export const useCanvasStore = create<CanvasStore>()(
       // Frame parent-child relationship operations
       adoptElement: (frameId, elementId) => {
         set(state => {
-          // Remove from any existing parent frame
-          state.layers.forEach(layer => {
-            if (layer.type === LayerType.Frame && layer.childIds && layer.childIds.includes(elementId)) {
-              layer.childIds = layer.childIds.filter(id => id !== elementId)
+          // Remove from existing parent using index (O(1) instead of O(n))
+          const currentParent = state.parentIndex.get(elementId)
+          if (currentParent) {
+            const parentLayer = state.layers.get(currentParent)
+            if (parentLayer && parentLayer.type === LayerType.Frame && parentLayer.childIds) {
+              parentLayer.childIds = parentLayer.childIds.filter(id => id !== elementId)
             }
-          })
+            
+            // Update children index
+            const siblings = state.childrenIndex.get(currentParent)
+            if (siblings) {
+              siblings.delete(elementId)
+              if (siblings.size === 0) {
+                state.childrenIndex.delete(currentParent)
+              }
+            }
+          }
           
-          // Add to new parent frame (no coordinate conversion needed now)
+          // Add to new parent frame
           const frame = state.layers.get(frameId)
           if (frame && frame.type === LayerType.Frame) {
             if (!frame.childIds) {
@@ -537,6 +603,13 @@ export const useCanvasStore = create<CanvasStore>()(
             }
             if (!frame.childIds.includes(elementId)) {
               frame.childIds = [...frame.childIds, elementId]
+              
+              // Update indexes
+              state.parentIndex.set(elementId, frameId)
+              if (!state.childrenIndex.has(frameId)) {
+                state.childrenIndex.set(frameId, new Set())
+              }
+              state.childrenIndex.get(frameId)!.add(elementId)
             }
           }
         })
@@ -545,12 +618,24 @@ export const useCanvasStore = create<CanvasStore>()(
       
       releaseElement: (elementId) => {
         set(state => {
-          // Remove from all parent frames
-          state.layers.forEach(layer => {
-            if (layer.type === LayerType.Frame && layer.childIds && layer.childIds.includes(elementId)) {
-              layer.childIds = layer.childIds.filter(id => id !== elementId)
+          // Remove from parent using index (O(1) instead of O(n))
+          const parentId = state.parentIndex.get(elementId)
+          if (parentId) {
+            const parentLayer = state.layers.get(parentId)
+            if (parentLayer && parentLayer.type === LayerType.Frame && parentLayer.childIds) {
+              parentLayer.childIds = parentLayer.childIds.filter(id => id !== elementId)
             }
-          })
+            
+            // Update indexes
+            state.parentIndex.delete(elementId)
+            const siblings = state.childrenIndex.get(parentId)
+            if (siblings) {
+              siblings.delete(elementId)
+              if (siblings.size === 0) {
+                state.childrenIndex.delete(parentId)
+              }
+            }
+          }
         })
         get().saveToDatabase()
       },
@@ -636,12 +721,8 @@ export const useCanvasStore = create<CanvasStore>()(
       
       getElementParent: (elementId) => {
         const state = get()
-        for (const [frameId, layer] of state.layers) {
-          if (layer.type === LayerType.Frame && layer.childIds && layer.childIds.includes(elementId)) {
-            return frameId
-          }
-        }
-        return null
+        // O(1) lookup using index instead of O(n) iteration
+        return state.parentIndex.get(elementId) || null
       },
       
       // Performance optimization methods
@@ -649,6 +730,66 @@ export const useCanvasStore = create<CanvasStore>()(
         set(state => {
           state.frameCache = null
           state.cacheVersion++
+        })
+      },
+      
+      rebuildParentIndex: () => {
+        set(state => {
+          // Clear existing indexes
+          state.parentIndex.clear()
+          state.childrenIndex.clear()
+          
+          // Rebuild from layer data
+          state.layers.forEach((layer, layerId) => {
+            if (layer.type === LayerType.Frame && layer.childIds) {
+              layer.childIds.forEach(childId => {
+                state.parentIndex.set(childId, layerId)
+                if (!state.childrenIndex.has(layerId)) {
+                  state.childrenIndex.set(layerId, new Set())
+                }
+                state.childrenIndex.get(layerId)!.add(childId)
+              })
+            }
+          })
+        })
+      },
+      
+      updateParentChildRelation: (parentId, childId) => {
+        set(state => {
+          // Remove from old parent if exists
+          const oldParent = state.parentIndex.get(childId)
+          if (oldParent && oldParent !== parentId) {
+            const siblings = state.childrenIndex.get(oldParent)
+            if (siblings) {
+              siblings.delete(childId)
+              if (siblings.size === 0) {
+                state.childrenIndex.delete(oldParent)
+              }
+            }
+          }
+          
+          // Add to new parent
+          state.parentIndex.set(childId, parentId)
+          if (!state.childrenIndex.has(parentId)) {
+            state.childrenIndex.set(parentId, new Set())
+          }
+          state.childrenIndex.get(parentId)!.add(childId)
+        })
+      },
+      
+      removeParentChildRelation: (childId) => {
+        set(state => {
+          const parentId = state.parentIndex.get(childId)
+          if (parentId) {
+            state.parentIndex.delete(childId)
+            const siblings = state.childrenIndex.get(parentId)
+            if (siblings) {
+              siblings.delete(childId)
+              if (siblings.size === 0) {
+                state.childrenIndex.delete(parentId)
+              }
+            }
+          }
         })
       }
     }))
