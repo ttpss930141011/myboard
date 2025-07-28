@@ -41,7 +41,6 @@ export const validatePublicBoard = async (shareId: string) => {
     const board = await prisma.board.findUnique({
       where: { 
         shareId,
-        shareId: { not: null },
         isPublic: true 
       },
       select: {

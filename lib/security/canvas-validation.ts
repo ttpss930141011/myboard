@@ -250,19 +250,21 @@ export const sanitizeCanvasData = (canvasData: any): any => {
   
   // Sanitize each layer's text content
   for (const [layerId, layer] of Object.entries(canvasData.layers)) {
-    const sanitizedLayer = { ...layer }
+    // Type guard to ensure layer is an object
+    if (!layer || typeof layer !== 'object') {
+      sanitizedLayers[layerId] = layer
+      continue
+    }
     
-    // Sanitize text content based on layer type
-    if (layer && typeof layer === 'object') {
-      const typedLayer = layer as any
-      
-      if (typedLayer.value && typeof typedLayer.value === 'string') {
-        sanitizedLayer.value = sanitizeLayerText(typedLayer.value)
-      }
-      
-      if (typedLayer.name && typeof typedLayer.name === 'string') {
-        sanitizedLayer.name = sanitizeLayerName(typedLayer.name)
-      }
+    const sanitizedLayer = { ...(layer as Record<string, any>) }
+    const typedLayer = layer as any
+    
+    if (typedLayer.value && typeof typedLayer.value === 'string') {
+      sanitizedLayer.value = sanitizeLayerText(typedLayer.value)
+    }
+    
+    if (typedLayer.name && typeof typedLayer.name === 'string') {
+      sanitizedLayer.name = sanitizeLayerName(typedLayer.name)
     }
     
     sanitizedLayers[layerId] = sanitizedLayer
