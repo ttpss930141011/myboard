@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
+import { secureApiClient } from '@/lib/api-client'
 
 export function useFavoriteBoard(boardId: string) {
   const queryClient = useQueryClient()
@@ -10,16 +11,7 @@ export function useFavoriteBoard(boardId: string) {
     mutationFn: async () => {
       if (!session?.user?.id) throw new Error('Not authenticated')
       
-      const res = await fetch(`/api/boards/${boardId}/favorite`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-      
-      if (!res.ok) {
-        const error = await res.text()
-        throw new Error(error || 'Failed to favorite board')
-      }
-      
+      const res = await secureApiClient.post(`/api/boards/${boardId}/favorite`)
       return res.json()
     },
     onSuccess: () => {
@@ -38,13 +30,7 @@ export function useUnfavoriteBoard(boardId: string) {
   
   return useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/boards/${boardId}/favorite`, {
-        method: 'DELETE',
-      })
-      
-      if (!res.ok) {
-        throw new Error('Failed to unfavorite board')
-      }
+      await secureApiClient.delete(`/api/boards/${boardId}/favorite`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boards'] })

@@ -4,6 +4,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { debounce } from 'lodash'
 import { nanoid } from 'nanoid'
 import { enableMapSet } from 'immer'
+import { secureApiClient } from '@/lib/api-client'
 import { 
   Layer, 
   Camera, 
@@ -453,11 +454,7 @@ export const useCanvasStore = create<CanvasStore>()(
         if (!boardId) return
         
         try {
-          await fetch(`/api/boards/${boardId}/canvas`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(canvasData),
-          })
+          await secureApiClient.put(`/api/boards/${boardId}/canvas`, canvasData)
         } catch (error) {
           console.error('Failed to save canvas:', error)
         }
