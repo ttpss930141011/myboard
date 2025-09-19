@@ -1,5 +1,5 @@
 import { Kalam } from 'next/font/google'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 
 import { NoteLayer } from '@/types/canvas'
 import { cn, colorToCss, getContrastingTextColor } from '@/lib/utils'
@@ -90,8 +90,9 @@ export const Note = ({
     textareaRef,
     startEditing,
     stopEditing,
-    handleKeyDown,
+    handleKeyDown: baseHandleKeyDown,
     handleChange,
+    cancelEditing,
   } = useLayerEditing({
     id,
     initialValue: value || '',
@@ -102,6 +103,16 @@ export const Note = ({
     allowEmpty: true, // Note 組件的特殊需求：允許空值
     autoSelect: false, // Note 通常不需要自動選中所有文本
   })
+
+  // Note組件特殊的鍵盤處理 - 允許Enter鍵換行
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      cancelEditing()
+    }
+    // 重要：不處理Enter鍵，讓textarea自然換行！
+    // 這修復了Enter鍵無法換行的問題
+  }, [cancelEditing])
 
   // Auto-resize text to fit container
   useEffect(() => {
